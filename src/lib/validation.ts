@@ -1,0 +1,47 @@
+import { z } from 'zod';
+import { prescriptionSchema } from './import';
+import type { WorkoutSession } from './domain';
+const entry = z.object({
+  id: z.string().uuid(),
+  exerciseId: z.string().uuid().nullable(),
+  name: z.string().max(160),
+  label: z.string(),
+  eligible: z.boolean(),
+  referenceUrl: z.string().nullable(),
+  prescription: prescriptionSchema,
+  instructions: z.string(),
+  completed: z.boolean(),
+  load: z.string().max(160),
+  notes: z.string().max(4000),
+});
+export const sessionSchema: z.ZodType<WorkoutSession> = z.object({
+  id: z.string().uuid(),
+  athleteId: z.string().uuid(),
+  assignmentId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  title: z.string(),
+  status: z.enum(['scheduled', 'in_progress', 'finished', 'skipped']),
+  finishedAt: z.string().nullable(),
+  version: z.number().int().min(0),
+  updatedAt: z.string(),
+  blocks: z.array(
+    z.object({
+      id: z.string().uuid(),
+      label: z.string(),
+      kind: z.enum([
+        'single',
+        'superset',
+        'circuit',
+        'emom',
+        'amrap',
+        'for_time',
+        'warmup',
+        'cooldown',
+        'instruction',
+      ]),
+      instructions: z.string(),
+      entries: z.array(entry),
+    }),
+  ),
+});
+export const sessionsSchema = z.array(sessionSchema);

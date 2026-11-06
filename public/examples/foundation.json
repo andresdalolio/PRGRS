@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "name": "Foundation · Strength & Engine",
+  "description": "A balanced first training week. Move well, leave a little in reserve, and record what you actually did.",
+  "weeks": [
+    {
+      "week": 1,
+      "workouts": [
+        {
+          "day": 1,
+          "title": "Lower body · Build the base",
+          "blocks": [
+            {
+              "label": "A",
+              "kind": "warmup",
+              "instructions": "Move easily. Two rounds at your own pace.",
+              "entries": [
+                {
+                  "exerciseKey": "bodyweight-squat",
+                  "name": "Bodyweight squat",
+                  "label": "A",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "rounds": 2,
+                    "reps": "10",
+                    "tempo": "3010"
+                  },
+                  "instructions": ""
+                }
+              ]
+            },
+            {
+              "label": "B",
+              "kind": "superset",
+              "instructions": "Alternate B1 and B2. Complete all three rounds.",
+              "entries": [
+                {
+                  "exerciseKey": "goblet-squat",
+                  "name": "Goblet squat",
+                  "label": "B1",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "sets": 3,
+                    "reps": "8–10",
+                    "rest": "90 seconds"
+                  },
+                  "instructions": "",
+                  "referenceUrl": "https://www.youtube.com/results?search_query=goblet+squat+technique"
+                },
+                {
+                  "exerciseKey": "romanian-deadlift",
+                  "name": "Romanian deadlift",
+                  "label": "B2",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "sets": 3,
+                    "reps": "10",
+                    "tempo": "3011",
+                    "load": "Comfortable, controlled load"
+                  },
+                  "instructions": ""
+                }
+              ]
+            },
+            {
+              "label": "C",
+              "kind": "cooldown",
+              "instructions": "Breathe slowly and let your heart rate settle.",
+              "entries": [
+                {
+                  "exerciseKey": "hip-flexor-stretch",
+                  "name": "Hip flexor stretch",
+                  "label": "C",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "duration": "45 seconds per side"
+                  },
+                  "instructions": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day": 3,
+          "title": "Upper body · Find your rhythm",
+          "blocks": [
+            {
+              "label": "A",
+              "kind": "superset",
+              "instructions": "Keep two good reps in reserve.",
+              "entries": [
+                {
+                  "exerciseKey": "push-up",
+                  "name": "Push-up",
+                  "label": "A1",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "sets": 3,
+                    "reps": "6–12",
+                    "rest": "60 seconds"
+                  },
+                  "instructions": ""
+                },
+                {
+                  "exerciseKey": "single-arm-row",
+                  "name": "Single-arm dumbbell row",
+                  "label": "A2",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "sets": 3,
+                    "reps": "10 per arm",
+                    "tempo": "2111"
+                  },
+                  "instructions": ""
+                }
+              ]
+            },
+            {
+              "label": "B",
+              "kind": "single",
+              "instructions": "",
+              "entries": [
+                {
+                  "exerciseKey": "farmer-carry",
+                  "name": "Farmer carry",
+                  "label": "B",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "sets": 3,
+                    "distance": "30 m",
+                    "rest": "60 seconds"
+                  },
+                  "instructions": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day": 5,
+          "title": "Engine · Steady effort",
+          "blocks": [
+            {
+              "label": "A",
+              "kind": "emom",
+              "instructions": "12 minutes. Alternate movements each minute. Rest for the remainder of each minute.",
+              "entries": [
+                {
+                  "exerciseKey": "air-squat",
+                  "name": "Air squat",
+                  "label": "A1",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "reps": "12",
+                    "rounds": 6
+                  },
+                  "instructions": ""
+                },
+                {
+                  "exerciseKey": "rowing",
+                  "name": "Row",
+                  "label": "A2",
+                  "eligible": true,
+                  "aliases": [],
+                  "prescription": {
+                    "calories": 10,
+                    "rounds": 6
+                  },
+                  "instructions": ""
+                }
+              ]
+            },
+            {
+              "label": "B",
+              "kind": "instruction",
+              "instructions": "Walk for five minutes. Reflect on what felt stronger this week.",
+              "entries": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

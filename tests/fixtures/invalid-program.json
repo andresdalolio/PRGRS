@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "Invalid example",
+  "weeks": [
+    {
+      "week": 1,
+      "workouts": [
+        {
+          "day": 8,
+          "title": "Invalid day",
+          "blocks": []
+        }
+      ]
+    }
+  ]
+}
