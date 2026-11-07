@@ -66,6 +66,7 @@ export default function Coach({
     [replace, setReplace] = useState<string | null>(null),
     [preview, setPreview] = useState<ProgramInput | null>(null),
     [assign, setAssign] = useState<Program | null>(null),
+    [remove, setRemove] = useState<Program | null>(null),
     [exercise, setExercise] = useState<Partial<Exercise> | null>(null),
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
@@ -441,6 +442,18 @@ export default function Coach({
                     >
                       <Copy size={18} />
                     </button>
+                    <button
+                      className="button danger"
+                      disabled={busy}
+                      aria-label={`Remove ${p.name}`}
+                      onClick={() => {
+                        setError('');
+                        setRemove(p);
+                      }}
+                    >
+                      <Trash2 size={18} />
+                      Remove
+                    </button>
                   </div>
                 </article>
               ))}
@@ -598,6 +611,38 @@ export default function Coach({
             );
           })}
         </section>
+      )}
+      {remove && (
+        <Modal title={`Remove ${remove.name}?`} onClose={() => !busy && setRemove(null)}>
+          <div className="stack">
+            <p>
+              This permanently deletes this program and unassigns it from every athlete. Unstarted
+              workouts from today onward will leave their schedules. Past workouts, recorded results
+              and offline edits are preserved.
+            </p>
+            <div className="row wrap">
+              <button className="button secondary" disabled={busy} onClick={() => setRemove(null)}>
+                Cancel
+              </button>
+              <button
+                className="button danger"
+                disabled={busy}
+                onClick={() =>
+                  void action(async () => {
+                    unwrap(await supabase().rpc('remove_program', { p_program: remove.id }));
+                    setRemove(null);
+                    setMessage('Program removed and unassigned from all athletes.');
+                    await queryClient.invalidateQueries({ queryKey: ['programs'] });
+                    await onRefresh();
+                  })
+                }
+              >
+                {busy ? 'Removing…' : 'Remove program & unassign'}
+              </button>
+            </div>
+            {error && <Notice error>{error}</Notice>}
+          </div>
+        </Modal>
       )}
       {assign && (
         <Modal title={`Assign ${assign.name}`} onClose={() => setAssign(null)}>

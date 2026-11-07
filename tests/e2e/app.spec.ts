@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { backend } from './backend';
+import { backend, userId } from './backend';
 import { readFile } from 'node:fs/promises';
 const today = () =>
   new Intl.DateTimeFormat('en-CA', {
@@ -151,6 +151,88 @@ test('coach imports and assigns; athlete logs partially offline, reloads and syn
     await expect(page.getByRole('heading', { name: 'The work you’ve put in.' })).toBeVisible();
   } finally {
     await context.setOffline(false);
+    await server.close();
+  }
+});
+test('removing a program confirms deletion, unassigns it and preserves workout history', async ({
+  page,
+}) => {
+  const server = await backend();
+  try {
+    const program = JSON.parse(await readFile('docs/examples/foundation.json', 'utf8'));
+    const id = (
+      await server.db.query<{ id: string }>('select public.save_program($1::jsonb) as id', [
+        JSON.stringify(program),
+      ])
+    ).rows[0].id;
+    await server.db.query('select public.assign_program($1,$2,$3)', [id, userId, today()]);
+    const snapshots = (
+      await server.db.query<{ data: import('../../src/lib/domain').WorkoutSession[] }>(
+        'select public.get_my_sessions() as data',
+      )
+    ).rows[0].data;
+    const finished = snapshots[0];
+    await server.db.query('select public.apply_session_mutation($1,$2,0,$3::jsonb)', [
+      crypto.randomUUID(),
+      finished.id,
+      JSON.stringify({
+        status: 'finished',
+        finishedAt: new Date().toISOString(),
+        results: finished.blocks.flatMap((b) =>
+          b.entries.map((e) => ({ entryId: e.id, completed: false, load: '', notes: '' })),
+        ),
+      }),
+    ]);
+    await page.goto('/');
+    await page.getByLabel('Email', { exact: true }).fill('alex@example.com');
+    await page.getByLabel('Password', { exact: true }).fill('test-password');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Review workout', exact: true })).toBeVisible();
+    await page.evaluate(() => {
+      location.hash = 'tab=coach';
+    });
+    await page.getByRole('button', { name: `Remove ${program.name}`, exact: true }).click();
+    let dialog = page.getByRole('dialog', { name: `Remove ${program.name}?` });
+    await expect(dialog.getByText(/unassigns it from every athlete/)).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    expect(
+      (await server.db.query('select id from public.programs where id=$1', [id])).rows,
+    ).toHaveLength(1);
+    await page.getByRole('button', { name: `Remove ${program.name}`, exact: true }).click();
+    dialog = page.getByRole('dialog', { name: `Remove ${program.name}?` });
+    await dialog.getByRole('button', { name: 'Remove program & unassign', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByText('Program removed and unassigned from all athletes.')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Build your first training block' }),
+    ).toBeVisible();
+    expect(
+      (await server.db.query('select id from public.programs where id=$1', [id])).rows,
+    ).toHaveLength(0);
+    expect(
+      (await server.db.query('select id from public.program_assignments where program_id=$1', [id]))
+        .rows,
+    ).toHaveLength(0);
+    const remaining = (
+      await server.db.query<{ data: import('../../src/lib/domain').WorkoutSession[] }>(
+        'select public.get_my_sessions() as data',
+      )
+    ).rows[0].data;
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]).toMatchObject({ id: finished.id, status: 'finished', assignmentId: null });
+    expect(remaining[0].blocks).toEqual(finished.blocks);
+    await page.reload();
+    await expect(
+      page.getByRole('heading', { name: 'Build your first training block' }),
+    ).toBeVisible();
+    await page.evaluate(() => {
+      location.hash = 'tab=home';
+    });
+    await page.getByRole('button', { name: 'Review workout', exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: `${finished.title}.`, exact: true }),
+    ).toBeVisible();
+  } finally {
     await server.close();
   }
 });

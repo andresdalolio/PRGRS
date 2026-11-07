@@ -22,6 +22,29 @@ afterEach(async () => {
   }
 });
 describe('durable workout outbox', () => {
+  it('keeps offline edits when program removal withdraws a workout and reconciles its detached snapshot', async () => {
+    const d = database(),
+      s = fixture();
+    await d.sessions.add(s);
+    await editSession(d, 'athlete', s.id, (workout) => {
+      workout.status = 'in_progress';
+      workout.blocks[0].entries[0].load = '32 kg';
+    });
+    await mergeRemote(d, 'athlete', []);
+    d.close();
+    await d.open();
+    expect((await d.sessions.get(s.id))?.blocks[0].entries[0].load).toBe('32 kg');
+    expect(await d.outbox.count()).toBe(1);
+    await synchronized(d, 'athlete', async (mutation) => {
+      expect(mutation.sessionId).toBe(s.id);
+      expect(mutation.log.results[0].load).toBe('32 kg');
+    });
+    const acknowledged = { ...(await d.sessions.get(s.id))!, assignmentId: null };
+    await mergeRemote(d, 'athlete', [acknowledged]);
+    expect(await d.outbox.count()).toBe(0);
+    expect((await d.sessions.get(s.id))?.assignmentId).toBeNull();
+    expect((await d.sessions.get(s.id))?.blocks[0].entries[0].load).toBe('32 kg');
+  });
   it('does not repopulate private data after logout during an in-flight fetch', async () => {
     const d = database(),
       s = fixture();

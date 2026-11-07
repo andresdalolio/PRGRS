@@ -17,7 +17,7 @@ const entry = z.object({
 export const sessionSchema: z.ZodType<WorkoutSession> = z.object({
   id: z.string().uuid(),
   athleteId: z.string().uuid(),
-  assignmentId: z.string().uuid(),
+  assignmentId: z.string().uuid().nullable(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   title: z.string(),
   description: z.string().default(''),

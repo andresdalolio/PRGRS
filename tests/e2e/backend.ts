@@ -134,6 +134,12 @@ export async function backend() {
               [JSON.stringify(args.p_program), args.p_replace || null],
             )
           ).rows[0].result;
+        else if (name === 'remove_program')
+          data = (
+            await db.query<{ result: unknown }>('select public.remove_program($1) as result', [
+              args.p_program,
+            ])
+          ).rows[0].result;
         else if (name === 'assign_program')
           data = (
             await db.query<{ result: unknown }>(

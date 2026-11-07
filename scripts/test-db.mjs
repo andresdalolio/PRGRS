@@ -377,6 +377,140 @@ try {
       persisted.blocks.flatMap((b) => b.entries).filter((e) => e.completed).length === 9,
     'Reopening preserves results and clears finalization timestamp',
   );
+  // Removal must unassign every athlete without destroying offline mutation targets or history.
+  await db.query('select public.assign_program($1,$2,$3)', [tenId, owner, '2099-01-01']);
+  const pendingOffline = (
+    await db.query('select public.get_my_sessions() as data')
+  ).rows[0].data.find((s) => s.date === '2099-01-01');
+  await db.query('select public.assign_program($1,$2,$3)', [tenId, owner, '2000-01-01']);
+  await db.query('select public.request_coaching($1)', [athlete]);
+  await asUser(athlete);
+  await db.query('select public.respond_coaching($1,true)', [owner]);
+  await asUser(owner);
+  await db.query('select public.assign_program($1,$2,$3)', [tenId, athlete, '2099-01-01']);
+  await asUser(athlete);
+  const athleteUpcoming = (
+    await db.query('select public.get_my_sessions() as data')
+  ).rows[0].data.find((s) => s.date === '2099-01-01');
+  await fails(
+    'select public.remove_program($1)',
+    [tenId],
+    /Coach capability required/,
+    'Athletes cannot remove their assigned program',
+  );
+  await db.query('select public.respond_coaching($1,false)', [owner]);
+  await asUser(other);
+  await fails(
+    'select public.remove_program($1)',
+    [tenId],
+    /Program unavailable/,
+    'Another coach cannot remove a program by ID',
+  );
+  await asUser(owner);
+  const reusableIds = (
+    await db.query(
+      `select w.id as week,t.id as workout,b.id as block,e.id as entry
+       from public.program_weeks w join public.workout_templates t on t.week_id=w.id
+       join public.template_blocks b on b.workout_id=t.id
+       join public.template_entries e on e.block_id=b.id where w.program_id=$1`,
+      [tenId],
+    )
+  ).rows;
+  await db.query('select public.remove_program($1)', [tenId]);
+  check(
+    (await db.query('select * from public.programs where id=$1', [tenId])).rows.length === 0 &&
+      (await db.query('select * from public.program_assignments where program_id=$1', [tenId])).rows
+        .length === 0,
+    'Removal deletes the program and its assignments',
+  );
+  for (const [table, key] of [
+    ['program_weeks', 'week'],
+    ['workout_templates', 'workout'],
+    ['template_blocks', 'block'],
+    ['template_entries', 'entry'],
+  ]) {
+    check(
+      (
+        await db.query(`select id from public.${table} where id=any($1::uuid[])`, [
+          reusableIds.map((r) => r[key]),
+        ])
+      ).rows.length === 0,
+      `Removal deletes all program ${table}`,
+    );
+  }
+  snapshots = (await db.query('select public.get_my_sessions() as data')).rows[0].data;
+  history = snapshots.find((s) => s.id === target.id);
+  check(
+    history.assignmentId === null &&
+      history.version === persisted.version &&
+      JSON.stringify(history.blocks) === JSON.stringify(persisted.blocks) &&
+      snapshots.some((s) => s.date === '2000-01-01') &&
+      !snapshots.some((s) => s.id === pendingOffline.id),
+    'Removal preserves logged and past workouts while withdrawing upcoming unstarted workouts',
+  );
+  check(
+    (await db.query('select * from public.exercises where id=$1', [exerciseId])).rows.length ===
+      1 &&
+      (await db.query('select * from public.sync_receipts where mutation_id=$1', [mutation])).rows
+        .length === 1,
+    'Removal preserves stable exercises and idempotency receipts',
+  );
+  check(
+    (
+      await db.query('select public.apply_session_mutation($1,$2,0,$3::jsonb) as version', [
+        mutation,
+        target.id,
+        JSON.stringify(log),
+      ])
+    ).rows[0].version === 1,
+    'An old acknowledged mutation remains idempotent after program removal',
+  );
+  await fails(
+    'select public.assign_program($1,$2,$3)',
+    [tenId, owner, '2099-02-01'],
+    /Program unavailable/,
+    'A deleted program cannot be assigned again',
+  );
+  await asUser(athlete);
+  check(
+    (await db.query('select * from public.program_assignments where program_id=$1', [tenId])).rows
+      .length === 0 &&
+      !(await db.query('select public.get_my_sessions() as data')).rows[0].data.some(
+        (s) => s.id === athleteUpcoming.id,
+      ),
+    'Removal unassigns and withdraws workouts even after an athlete revokes coaching access',
+  );
+  const offlineLog = {
+    status: 'in_progress',
+    finishedAt: null,
+    results: athleteUpcoming.blocks.flatMap((b) =>
+      b.entries.map((e, i) => ({
+        entryId: e.id,
+        completed: i === 0,
+        load: i === 0 ? '32 kg' : '',
+        notes: i === 0 ? 'Saved offline before removal' : '',
+      })),
+    ),
+  };
+  const offlineMutation = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+  for (let attempt = 0; attempt < 2; attempt++)
+    check(
+      (
+        await db.query('select public.apply_session_mutation($1,$2,0,$3::jsonb) as version', [
+          offlineMutation,
+          athleteUpcoming.id,
+          JSON.stringify(offlineLog),
+        ])
+      ).rows[0].version === 1,
+      `Pending offline edits after removal synchronize idempotently (attempt ${attempt + 1})`,
+    );
+  const recovered = (await db.query('select public.get_my_sessions() as data')).rows[0].data.find(
+    (s) => s.id === athleteUpcoming.id,
+  );
+  check(
+    recovered.assignmentId === null && recovered.blocks[0].entries[0].load === '32 kg',
+    'A withdrawn workout with offline edits returns to history without restoring the assignment',
+  );
   await db.exec('reset role');
   await db.exec('set role anon');
   await fails(
@@ -390,6 +524,12 @@ try {
     [],
     /permission denied/,
     'Anonymous users cannot invoke training RPCs',
+  );
+  await fails(
+    'select public.remove_program($1)',
+    [program],
+    /permission denied/,
+    'Anonymous users cannot remove programs',
   );
   console.log(
     `\n${assertions} database assertions passed (PGlite PostgreSQL; auth.uid test shim).`,

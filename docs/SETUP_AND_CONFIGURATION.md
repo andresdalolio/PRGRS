@@ -46,6 +46,8 @@ Verify: restart the app and confirm the sign-in form appears. Malformed origins 
 
 The repository supplies `supabase/config.toml` and a lockfile-pinned **v3** CLI. Use the repository CLI rather than an unrelated global version:
 
+On the current development Mac, first follow [Supabase access with the VPN enabled](#supabase-access-with-the-vpn-enabled): the CLI needs the system certificate store, and the database needs the IPv4 pooler. Set `NODE_USE_SYSTEM_CA=1` in the terminal before running hosted commands.
+
 ```sh
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
@@ -56,7 +58,7 @@ npx supabase db push --remote --skip-vault
 
 Review the printed target project and dry-run before pushing. CLI v3 defaults to **local**; hosted operations require `--remote` and confirmation. `--skip-vault` keeps this migration procedure from also changing Vault configuration. See the [official v3 migration changes](https://supabase.com/changelog/supabase-cli-v3). Use a narrowly scoped CLI token where practical; never put it in `NEXT_PUBLIC_*` or source control.
 
-Apply all four migrations, including exercise permissions, workout details and RLS identity optimization, before using this version. The initial migration targets a new dedicated project. Migration history supplies repeatability: preserve existing filenames and never reapply CREATE statements manually. Do not mix SQL Editor application and CLI migrations without reconciling history.
+Apply every repository migration, including exercise permissions, workout details, RLS identity optimization and program removal, before using this version. The initial migration targets a new dedicated project. Migration history supplies repeatability: preserve existing filenames and never reapply CREATE statements manually. Do not mix SQL Editor application and CLI migrations without reconciling history.
 
 Verify: rerun `npx supabase migration list --remote`; every repository migration should be recorded and the push dry-run should be empty. Run `npx supabase db advisors --remote --type all --level warn`, then the real-account RLS checks below. Administrative SQL alone cannot demonstrate RLS enforcement.
 
@@ -208,6 +210,58 @@ Use provider runtime logs and browser `[PRGRS]` events. `src/lib/observability.t
 Creating/modifying external accounts or cloud projects on your behalf, connecting a production database, applying production migrations, public deployment, changing production auth settings, deleting/resetting data, and configuring paid services all require your explicit authorization. Instructions above let you perform the manual setup yourself; the implementation agent has not performed those external actions.
 
 ## Troubleshooting
+
+### Supabase access with the VPN enabled
+
+**Observed on 2026-11-07:** the development Mac must keep its VPN enabled. Hosted database commands reported `IPv6 is not supported on your current network`; linking then failed with `HttpClientError: Transport error` when requesting `https://api.supabase.com/v1/projects/...`.
+
+These failures involve different connections. The database needs an IPv4 route through the shared pooler. Linking first needs a working HTTPS connection to the Management API to discover that pooler. The transport error alone does not identify a VPN, DNS or certificate fault. See [Supabase's transport-error troubleshooting](https://supabase.com/kb/troubleshooting/supabase-cli-transport-error-antivirus-firewall-tls-interception).
+
+**Verified workaround for the Management API:** unauthenticated curl and Node HTTPS requests returned HTTP 401 (expected without a token). With the existing CLI login, `npx supabase projects list` failed with the transport error, while the same read-only command with `NODE_USE_SYSTEM_CA=1` succeeded. This supports a difference in certificate trust; the VPN's exact interception behavior was not independently confirmed. The setting adds system-trusted certificate authorities and keeps TLS verification enabled. See [Bun's environment-variable documentation](https://bun.sh/docs/runtime/environment-variables) and [Node's enterprise network guidance](https://nodejs.org/en/learn/http/enterprise-network-configuration).
+
+In the same terminal, run:
+
+```sh
+export NODE_USE_SYSTEM_CA=1
+npx supabase projects list
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase migration list --remote
+npx supabase db push --remote --dry-run --skip-vault
+```
+
+Use the project ref belonging to the app's `NEXT_PUBLIC_SUPABASE_URL`. Link without `--skip-pooler` so the CLI can save the IPv4 pooler configuration. Review the target and pending migrations; then, when ready to apply them:
+
+```sh
+npx supabase db push --remote --skip-vault
+npx supabase migration list --remote
+```
+
+The export lasts for this terminal session. Repeat it in a new terminal or use a command-scoped prefix such as `NODE_USE_SYSTEM_CA=1 npx supabase projects list`. Putting the value only in Next.js's `.env.local` does not export it into your terminal. Do not use `NODE_TLS_REJECT_UNAUTHORIZED=0`, turn off certificate verification, or disconnect the required VPN as the default fix. If system trust is insufficient, obtain the approved CA bundle from IT and configure `NODE_EXTRA_CA_CERTS` for the CLI process.
+
+**If linking still fails:** use Dashboard → Connect → **Session pooler**, which supports IPv4 on port **5432**. Copy its exact host; do not guess a cluster from the region. Use the pooler username `postgres.YOUR_PROJECT_REF`. See [Supabase connection modes](https://supabase.com/docs/guides/database/connecting-to-postgres). In CLI v3, an explicit database URI goes in `--remote=...`; older examples using `--db-url` do not match this repository's CLI.
+
+Prepare the session-pooler URI privately with the actual database password, percent-encoding any special characters in the password. Keep it out of source control, chat and shell history. This zsh prompt reads it without echoing it or putting its literal value in command history:
+
+```sh
+read -rs 'PRGRS_DB_URL?Paste session-pooler URI (hidden): '
+print
+npx supabase migration list --remote="$PRGRS_DB_URL"
+npx supabase db push --remote="$PRGRS_DB_URL" --dry-run --skip-vault
+```
+
+After reviewing that target and dry-run:
+
+```sh
+npx supabase db push --remote="$PRGRS_DB_URL" --skip-vault
+npx supabase migration list --remote="$PRGRS_DB_URL"
+unset PRGRS_DB_URL
+```
+
+This avoids linked-project connection discovery, but still requires network access to the pooler. If that port is blocked, ask IT to allow the project pooler host on TCP 5432. `--dns-resolver https` is a separate option for confirmed DNS failures; it does not supply missing CA trust or IPv6 connectivity. Avoid sharing raw `--debug` output or connection URIs, which may contain credentials.
+
+**Verification boundary:** the system-CA workaround was verified with a read-only project lookup using the installed CLI 3.0.0. Relinking, a hosted migration push and the explicit pooler-URI fallback were not performed during this troubleshooting. After applying migrations, confirm remote history matches local files, then retry the app action. For `public.remove_program(p_program)` missing from the schema cache, confirm `20261107223229_remove_program.sql` appears in remote migration history before investigating a stale API cache.
+
+### Other symptoms
 
 | Symptom                              | Check/fix                                                                                                                                                                                                          |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

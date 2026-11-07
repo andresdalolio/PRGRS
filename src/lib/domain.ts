@@ -45,7 +45,7 @@ export type Block = {
 export type WorkoutSession = {
   id: string;
   athleteId: string;
-  assignmentId: string;
+  assignmentId: string | null;
   date: string;
   title: string;
   description?: string;

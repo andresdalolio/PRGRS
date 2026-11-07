@@ -438,7 +438,7 @@ export type Database = {
       workout_sessions: {
         Row: {
           id: string;
-          assignment_id: string;
+          assignment_id: string | null;
           athlete_id: string;
           template_id: string | null;
           scheduled_date: string;
@@ -450,10 +450,11 @@ export type Database = {
           description: string;
           category: string;
           estimated_minutes: number | null;
+          withdrawn_at: string | null;
         };
         Insert: {
           id?: string;
-          assignment_id: string;
+          assignment_id?: string | null;
           athlete_id: string;
           template_id?: string | null;
           scheduled_date: string;
@@ -465,10 +466,11 @@ export type Database = {
           description?: string;
           category?: string;
           estimated_minutes?: number | null;
+          withdrawn_at?: string | null;
         };
         Update: {
           id?: string;
-          assignment_id?: string;
+          assignment_id?: string | null;
           athlete_id?: string;
           template_id?: string | null;
           scheduled_date?: string;
@@ -480,6 +482,7 @@ export type Database = {
           description?: string;
           category?: string;
           estimated_minutes?: number | null;
+          withdrawn_at?: string | null;
         };
         Relationships: [
           {
@@ -561,6 +564,7 @@ export type Database = {
       get_my_sessions: { Args: Record<string, never>; Returns: Json };
       get_program: { Args: { p_id: string }; Returns: Json };
       has_role: { Args: { p_role: string }; Returns: boolean };
+      remove_program: { Args: { p_program: string }; Returns: null };
       request_coaching: { Args: { p_athlete: string }; Returns: null };
       respond_coaching: { Args: { p_coach: string; p_accept: boolean }; Returns: null };
       save_program: { Args: { p_program: Json; p_replace?: string | null }; Returns: string };
