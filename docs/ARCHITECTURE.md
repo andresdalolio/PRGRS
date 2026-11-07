@@ -68,9 +68,9 @@ Logout refuses to silently delete pending work. Synchronize first, or export and
 
 ## PWA and presentation
 
-Manifest, PNG/SVG icons, Apple metadata, viewport safe areas and standalone display are supplied. The production service worker precaches the public document and its initial Next scripts/styles, then caches same-origin static assets. Supabase/auth/API/RSC responses are never service-worker cached. Navigation falls back to the public document; Dexie restores the actual view. New service workers wait for old clients to close, avoiding a forced reload during a workout. Bump the shell cache version when changing shell strategy. External videos require connectivity. Development deliberately does not install a service worker.
+Manifest, approved-master PNG icons, Apple metadata, viewport safe areas and standalone display are supplied. The production service worker precaches the public document and its initial Next scripts/styles, then caches same-origin static assets. Supabase/auth/API/RSC responses are never service-worker cached. Navigation falls back to the public document; Dexie restores the actual view. New service workers wait for old clients to close, avoiding a forced reload during a workout. Bump the shell cache version when changing shell strategy. External videos require connectivity. Development deliberately does not install a service worker.
 
-Light/dark colors use shared tokens; system preference is the default and explicit selection persists locally. Touch targets, native labels, keyboard focus, semantic checkbox buttons, dialog focus trapping, reduced-motion rules and responsive navigation support gym use.
+The Acid Green / Carbon visual system and approved raster icon integration are documented in [interface conventions](DESIGN_SYSTEM.md). Light/dark colors use shared tokens; system preference is the default and explicit selection persists locally. Touch targets, native labels, keyboard focus, semantic checkbox buttons, dialog focus trapping, reduced-motion rules and responsive navigation support gym use.
 
 ## Deliberate limits
 

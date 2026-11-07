@@ -220,6 +220,7 @@ export default function Coach({
                   <div className="segmented">
                     <button
                       className={mode === 'builder' ? 'selected' : ''}
+                      aria-pressed={mode === 'builder'}
                       onClick={() => {
                         if (mode === 'json' && raw) {
                           try {
@@ -236,6 +237,7 @@ export default function Coach({
                     </button>
                     <button
                       className={mode === 'json' ? 'selected' : ''}
+                      aria-pressed={mode === 'json'}
                       onClick={() => {
                         setRaw(JSON.stringify(draft, null, 2));
                         setMode('json');

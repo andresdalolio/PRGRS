@@ -1,9 +1,11 @@
 /* Public shell only. Auth responses and Supabase requests are NEVER cached here. */
-const SHELL = 'prgrs-shell-v1';
+const SHELL = 'prgrs-shell-v2';
 const CORE = [
   '/',
   '/manifest.webmanifest',
-  '/icons/icon.svg',
+  '/icons/favicon-32.png',
+  '/icons/favicon-48.png',
+  '/icons/favicon-64.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',

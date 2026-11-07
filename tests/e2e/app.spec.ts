@@ -100,6 +100,22 @@ test('coach imports and assigns; athlete logs partially offline, reloads and syn
     await expect(
       page.getByText('Session finished · 90% of exercises completed.').first(),
     ).toBeVisible();
+    await page.evaluate(() => {
+      location.hash = 'tab=profile';
+    });
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await expect(
+      page.getByText(
+        'Sync or export and explicitly discard pending edits in Profile before signing out.',
+      ),
+    ).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Profile & preferences.' })).toBeVisible();
+    await page.evaluate(() => {
+      location.hash = 'tab=home';
+    });
+    await page.getByRole('button', { name: 'Review workout', exact: true }).click();
+    await expect(page.getByLabel('Actual load · A1', { exact: true })).toHaveValue('24 kg');
     server.setOnline(true);
     await context.setOffline(false);
     await expect(page.getByText('All changes saved', { exact: true })).toBeVisible({
@@ -177,9 +193,20 @@ test('calendar views, theme persistence, accessible layouts and history referenc
       'href',
       /youtube/,
     );
-    await page.getByRole('button', { name: 'View history', exact: true }).first().click();
+    await page.screenshot({
+      path: `test-results/workout-${test.info().project.name}.png`,
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'View history', exact: true }).first().focus();
+    await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog')).toBeVisible();
-    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await expect(page.getByRole('dialog')).toHaveAccessibleName(/history/);
+    await expect(page.getByRole('button', { name: 'Close dialog' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'View history', exact: true }).first(),
+    ).toBeFocused();
     await page.evaluate(() => {
       location.hash = 'tab=profile';
     });
@@ -203,6 +230,83 @@ test('calendar views, theme persistence, accessible layouts and history referenc
       () => document.documentElement.scrollWidth > window.innerWidth,
     );
     expect(overflow).toBe(false);
+  } finally {
+    await server.close();
+  }
+});
+
+test('brand, authentication and coach editor remain accessible across responsive themes', async ({
+  page,
+}) => {
+  const server = await backend();
+  const accessible = async () => {
+    expect(
+      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
+        .violations,
+    ).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(
+      false,
+    );
+  };
+  try {
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+    await accessible();
+    await page.screenshot({
+      path: `test-results/auth-${test.info().project.name}.png`,
+      fullPage: true,
+    });
+    await page.getByLabel('Email', { exact: true }).fill('alex@example.com');
+    await page.getByLabel('Password', { exact: true }).fill('password123');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Let’s get to work, Alex.' })).toBeVisible();
+    // Skipping content must focus the main region without changing the hash route.
+    await page.getByRole('link', { name: 'Skip to content' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('main')).toBeFocused();
+    const originalViewport = page.viewportSize()!;
+    for (const width of [320, 430, 768, 1024]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.getByRole('button', { name: 'Explore your week' })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(
+        false,
+      );
+    }
+    await page.setViewportSize(originalViewport);
+    await page.evaluate(() => {
+      location.hash = 'tab=coach';
+    });
+    await page.getByRole('button', { name: 'Import JSON', exact: true }).click();
+    await page.getByLabel('Program JSON', { exact: true }).fill('{broken');
+    await page.getByRole('button', { name: 'Validate & preview' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Invalid JSON' })).toBeVisible();
+    await accessible();
+    await page.getByRole('button', { name: 'Load example', exact: true }).click();
+    await page.getByRole('button', { name: 'Builder', exact: true }).click();
+    await expect(page.locator('.program-builder')).toBeVisible();
+    await accessible();
+    await page.screenshot({
+      path: `test-results/coach-${test.info().project.name}.png`,
+      fullPage: true,
+    });
+    await page.evaluate(() => {
+      location.hash = 'tab=profile';
+    });
+    await page.getByRole('button', { name: 'dark', exact: true }).click();
+    await accessible();
+    await page.evaluate(() => {
+      location.hash = 'tab=coach';
+    });
+    await page.getByRole('button', { name: 'Import JSON', exact: true }).click();
+    await page.getByRole('button', { name: 'Load example', exact: true }).click();
+    await page.getByRole('button', { name: 'Builder', exact: true }).click();
+    await expect(page.locator('.program-builder')).toBeVisible();
+    await accessible();
+    await page.screenshot({
+      path: `test-results/coach-dark-${test.info().project.name}.png`,
+      fullPage: true,
+    });
   } finally {
     await server.close();
   }

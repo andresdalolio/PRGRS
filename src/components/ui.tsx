@@ -1,7 +1,23 @@
 'use client';
 import { X, ArrowUpRight, Dumbbell } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import Image from 'next/image';
+import { useEffect, useId, useRef } from 'react';
 import { completion, formatDate, statusLabel, type WorkoutSession } from '@/lib/domain';
+export function Brand() {
+  return (
+    <span className="wordmark">
+      <Image
+        className="brand-icon"
+        src="/icons/icon-192.png"
+        width={42}
+        height={42}
+        alt=""
+        unoptimized
+      />
+      <span>PRGRS</span>
+    </span>
+  );
+}
 export function Empty({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="empty">
@@ -67,23 +83,29 @@ export function Modal({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const titleId = useId();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     d?.showModal();
-    return () => d?.close();
+    return () => {
+      d?.close();
+      if (trigger?.isConnected) trigger.focus();
+    };
   }, []);
   return (
     <dialog
       ref={ref}
       className="modal"
+      aria-labelledby={titleId}
       onCancel={onClose}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="row between">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button className="icon-button" aria-label="Close dialog" onClick={onClose}>
           <X />
         </button>

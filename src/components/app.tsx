@@ -35,7 +35,7 @@ import {
   weekStart,
   type WorkoutSession,
 } from '@/lib/domain';
-import { Empty, Meter, Modal, Notice, SessionCard } from './ui';
+import { Brand, Empty, Meter, Modal, Notice, SessionCard } from './ui';
 import Workout from './workout';
 import Coach from './coach';
 type Tab = 'home' | 'workouts' | 'history' | 'profile' | 'coach';
@@ -239,9 +239,7 @@ function Application() {
   if (loading && !identity)
     return (
       <div className="splash">
-        <div className="wordmark">
-          PRGRS<span>↗</span>
-        </div>
+        <Brand />
         <p>Opening your training…</p>
       </div>
     );
@@ -249,6 +247,16 @@ function Application() {
   const selected = sessions.find((s) => s.id === workout && s.athleteId === identity.id);
   return (
     <div className="app-shell">
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       {menu && (
         <button
           className="nav-backdrop"
@@ -264,8 +272,8 @@ function Application() {
         >
           <X />
         </button>
-        <a className="wordmark" href="#tab=home">
-          PRGRS<span>↗</span>
+        <a className="brand-link" href="#tab=home" aria-label="PRGRS home">
+          <Brand />
         </a>
         <div className="sidebar-caption">YOUR TRAINING SPACE</div>
         <nav aria-label="Main navigation">
@@ -319,6 +327,9 @@ function Application() {
           >
             {menu ? <X /> : <Menu />}
           </button>
+          <a className="mobile-brand" href="#tab=home" aria-label="PRGRS home">
+            <Brand />
+          </a>
           <span className="breadcrumb">
             Your space <span>/</span>{' '}
             <strong>
@@ -327,7 +338,7 @@ function Application() {
           </span>
           <div className="row">
             <span
-              className={`sync-indicator ${!online || pending.some((m) => m.error) ? 'warning' : ''}`}
+              className={`sync-indicator ${!online ? 'offline' : pending.some((m) => m.error) ? 'error' : pending.length || syncing ? 'pending' : 'saved'}`}
               role="status"
             >
               {!online ? (
@@ -356,7 +367,7 @@ function Application() {
             </button>
           </div>
         </header>
-        <main id="main-content">
+        <main id="main-content" tabIndex={-1}>
           {error && (
             <Notice error>
               <span>{error}</span>
@@ -485,8 +496,8 @@ function Auth({
   return (
     <div className="auth-shell">
       <section className="auth-story">
-        <Link href="/" className="wordmark">
-          PRGRS<span>↗</span>
+        <Link href="/" className="brand-link" aria-label="PRGRS home">
+          <Brand />
         </Link>
         <div>
           <p className="eyebrow">YOUR TRAINING. YOUR JOURNEY.</p>
@@ -501,13 +512,6 @@ function Auth({
             One session at a time. A training space that keeps up with you, even when your
             connection doesn’t.
           </p>
-          <div className="auth-lines">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
         </div>
         <p className="brand-rationale">
           The name is incomplete by design. Because progress never ends.
@@ -705,7 +709,7 @@ function Dashboard({
                   key={d}
                   className={`week-day ${d === today ? 'today' : ''}`}
                   onClick={onCalendar}
-                  aria-label={`View ${formatDate(d)}`}
+                  aria-label={`View ${formatDate(d)} · ${s.length ? `${s.length} sessions${finished ? ', all finished' : ', scheduled'}` : 'No sessions'}`}
                 >
                   <span>{formatDate(d, { weekday: 'narrow' })}</span>
                   <strong>{Number(d.slice(-2))}</strong>
@@ -1259,8 +1263,8 @@ function Profile({
             )}
           </section>
           <section className="panel">
-            <div className="wordmark small-wordmark">
-              PRGRS<span>↗</span>
+            <div className="small-brand">
+              <Brand />
             </div>
             <p>The name is incomplete by design. Because progress never ends.</p>
             <p className="small-note">
