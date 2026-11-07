@@ -21,8 +21,8 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 180_000,
     env: {
-      NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'test-only-publishable-key',
+      NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54331',
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_only',
     },
   },
 });

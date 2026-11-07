@@ -33,6 +33,8 @@ import {
 } from '@/lib/db';
 import { fetchSessions, sendMutation } from '@/lib/remote';
 import { synchronized } from '@/lib/sync';
+import { configuration } from '@/lib/config';
+import { reportError } from '@/lib/observability';
 import {
   adherence,
   completion,
@@ -66,7 +68,7 @@ export default function App() {
 function Application() {
   const [identity, setIdentity] = useState<Identity | null>(null),
     [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
+    [error, setErrorValue] = useState(''),
     [online, setOnline] = useState(true),
     [syncing, setSyncing] = useState(false),
     [syncError, setSyncError] = useState(''),
@@ -74,6 +76,14 @@ function Application() {
     [workout, setWorkout] = useState<string | null>(null),
     [menu, setMenu] = useState(false),
     [boot, setBoot] = useState(0);
+  const setError = useCallback((message: string) => {
+    if (message) reportError('application', message);
+    setErrorValue(
+      /quota/i.test(message)
+        ? 'Device storage is full. Your latest edit could not be saved. Keep this screen open, free space without clearing this app’s data, and retry.'
+        : message,
+    );
+  }, []);
   const sessions = useLiveQuery(() => db().sessions.toArray(), [], []),
     outbox = useLiveQuery(() => db().outbox.toArray(), [], []);
   const today = todayInZone(identity?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -91,6 +101,7 @@ function Application() {
       await mergeRemote(db(), identity.id, remote, true);
       setSyncError('');
     } catch (e) {
+      reportError('sync', e);
       setSyncError(
         e instanceof Error ? e.message : 'Unable to synchronize. Local edits are saved.',
       );
@@ -110,7 +121,7 @@ function Application() {
   useEffect(() => {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production')
       navigator.serviceWorker
-        .register('/sw.js')
+        .register(`/sw.js?build=${process.env.NEXT_PUBLIC_RELEASE_ID}`, { updateViaCache: 'none' })
         .catch(() => setError('Offline shell could not be installed. Reload while connected.'));
     if (navigator.storage?.persist) void navigator.storage.persist().catch(() => false);
     const update = () => setOnline(navigator.onLine);
@@ -121,7 +132,7 @@ function Application() {
       window.removeEventListener('online', update);
       window.removeEventListener('offline', update);
     };
-  }, []);
+  }, [setError]);
   useEffect(() => {
     let active = true;
     async function initialize() {
@@ -187,7 +198,7 @@ function Application() {
     return () => {
       active = false;
     };
-  }, [boot]);
+  }, [boot, setError]);
   useEffect(() => {
     void sync();
     const timer = setInterval(() => void sync(), 30_000);
@@ -546,6 +557,7 @@ function Auth({
                 Add the Supabase project URL and public publishable key to <code>.env.local</code>,
                 then restart the app.
               </p>
+              <p>{configuration().error}</p>
               <p>
                 Follow <code>docs/SETUP_AND_CONFIGURATION.md</code> to create your account and
                 import your first program.

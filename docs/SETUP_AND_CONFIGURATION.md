@@ -9,6 +9,7 @@ Use this guide to connect PRGRS and record your first workout. No knowledge of i
 - Transactional SQL schema, RLS, constrained permissions, signup bootstrap, program import/assignment and safe log-sync functions.
 - Durable offline database/outbox and conflict-review controls.
 - Public environment template, valid import example, downloadable schema, tests and setup documentation.
+- Build-time public-key checks, per-build offline-shell caches, sanitized error hooks and a GitHub verification workflow (no deployment job).
 - No cloud account, Supabase project, real credentials, hosted database or public deployment was created.
 
 Without credentials, `npm run dev` still runs and displays connection instructions. Training/auth screens become usable once the following setup is complete. There is no production mock database.
@@ -39,20 +40,27 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_PUBLISHABLE_KEY
 
 These two values are intentionally public. Do **not** use `sb_secret_...`, `service_role`, the database password, or a personal access token in either variable. This app needs no privileged browser key.
 
+Verify: restart the app and confirm the sign-in form appears. Malformed origins and non-public keys fail configuration without echoing their values. Unconfigured local builds can show setup guidance; Vercel builds require both valid public values. No server secret is required by the application. `NEXT_PUBLIC_RELEASE_ID` is generated automatically for service-worker versioning; do not set it manually. Environment files are ignored except the placeholder-only `.env.example`.
+
 ### C. Apply migrations
 
-The repository supplies `supabase/config.toml`. Install a current [Supabase CLI](https://supabase.com/docs/guides/local-development). With a global CLI:
+The repository supplies `supabase/config.toml` and a lockfile-pinned **v3** CLI. Use the repository CLI rather than an unrelated global version:
 
 ```sh
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase db push --dry-run
-supabase db push
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase migration list --remote
+npx supabase db push --remote --dry-run --skip-vault
+npx supabase db push --remote --skip-vault
 ```
 
-Review the target project and dry-run before pushing. Apply all migrations, including the additive exercise-permission and workout-detail migrations, before using this application version. The initial migration is designed for a new dedicated project. `db push` records migration history; do not paste/reapply the initial CREATE statements on each run. The alternative for a new development project is to execute each migration in filename order once through Supabase SQL Editor. Do not mix SQL Editor application and CLI migrations without reconciling migration history.
+Review the printed target project and dry-run before pushing. CLI v3 defaults to **local**; hosted operations require `--remote` and confirmation. `--skip-vault` keeps this migration procedure from also changing Vault configuration. See the [official v3 migration changes](https://supabase.com/changelog/supabase-cli-v3). Use a narrowly scoped CLI token where practical; never put it in `NEXT_PUBLIC_*` or source control.
 
-No database reset is needed. Never run `supabase db reset --linked` on real data.
+Apply all four migrations, including exercise permissions, workout details and RLS identity optimization, before using this version. The initial migration targets a new dedicated project. Migration history supplies repeatability: preserve existing filenames and never reapply CREATE statements manually. Do not mix SQL Editor application and CLI migrations without reconciling history.
+
+Verify: rerun `npx supabase migration list --remote`; every repository migration should be recorded and the push dry-run should be empty. Run `npx supabase db advisors --remote --type all --level warn`, then the real-account RLS checks below. Administrative SQL alone cannot demonstrate RLS enforcement.
+
+For production, first verify a recent backup/PITR restore point in the dashboard and rehearse restoration to a separate project. Record the application commit and migration versions. Review expected locks and apply in a quiet window. All current migrations are transactional; a failed transaction rolls back its changes. Diagnose failure before retrying; never repair history to hide a failure. Retain additive columns/policies when rolling back the app; use a reviewed forward migration for database corrections. Restoring a backup can lose subsequent training and requires separate authorization and a recovery plan for pending device edits. Never casually run reset, drop, migration repair, or a destructive down migration against live data.
 
 ### D. Configure email/password authentication
 
@@ -64,8 +72,11 @@ In Supabase Authentication settings:
 - Allow redirect URL `http://localhost:3000` (and the equivalent trailing-slash origin if needed by your provider settings).
 - When you later choose a production domain, add that exact HTTPS origin and change Site URL to it. The app uses `location.origin` as the signup confirmation destination; do not invent an `/auth/callback` route.
 - For a production launch, configure your own SMTP delivery rather than assuming the development email quota is sufficient.
+- Set a minimum password length of at least 8 to match the UI, review Auth rate limits, and disable anonymous signup for this application.
 
 See [Supabase redirect URL configuration](https://supabase.com/docs/guides/auth/redirect-urls). Never put production signup redirects on a broad wildcard domain.
+
+Verify: request a fresh signup confirmation, open it on the intended origin, sign in, reload and sign out. Test expired authentication with pending edits and use Profile → Sign in again to refresh authentication. Pending device work must survive. Hosted mail delivery and domain configuration are operator checks, even when local Auth tests pass.
 
 ### E. Start, sign up and grant your initial coach capability
 
@@ -140,17 +151,20 @@ For an installed iPhone PWA, also force-close/reopen offline. Desktop/mobile bro
 
 ### Local Supabase
 
-Install the Supabase CLI and a Docker-compatible runtime (Docker Desktop, OrbStack or equivalent). From this repository, with the supplied config:
+Install a Docker-compatible runtime (Docker Desktop, OrbStack or equivalent). From this repository:
 
 ```sh
-supabase start
-supabase db reset
-supabase status
+npx supabase start
+npx supabase migration up
+npx supabase status
+npm run test:integration
 ```
 
-`db reset` is for the **disposable local stack only**: it rebuilds it and applies migrations. Copy the local API URL and local public/anon key from `supabase status` into `.env.local`, then restart Next. Local Studio defaults to <http://localhost:54323>; local mail capture defaults to <http://localhost:54324>. The actual status output is authoritative. The configured local email provider does not require confirmation; hosted settings should require it.
+Copy the local API URL and local public/anon key from status into `.env.local`, then restart Next. Status also prints privileged local values: do not share its full output. Local Studio defaults to <http://localhost:54323>; mail capture defaults to <http://localhost:54324>. Status output is authoritative. Local email does not require confirmation; hosted settings should. There is deliberately no seed data or automatic coach promotion.
 
-`supabase test db` runs pgTAP schema checks. `npm run db:test` works independently of Docker using PGlite. On 2026-11-07, the running local stack was verified, its two pending additive migrations were applied with `npx supabase migration up`, and all 8 pgTAP checks passed using `npx supabase test db --network-id supabase_network_PRGRS`. The network flag resolves the test runner's `db` hostname on this stack; use your database container's network if named differently. No reset or hosted changes were performed. Auth/PostgREST user workflows still require the connectivity checks above. New CLI versions may change config; compare with the CLI's generated defaults if an option is rejected, keeping our port/auth settings and migrations.
+`npm run test:integration` only accepts loopback port 54321 and the local `PRGRS` Docker stack. It runs real signup, password sign-in, provisioning, import/assignment, partial finish, replay, cross-user RLS and coaching revocation checks. It creates random test accounts and removes only their records afterward. Local administrative credentials stay inside the Node test process and never enter the application or browser bundle. A terminated test may require inspecting and removing its `prgrs-release-*` test accounts; never reset unrelated local data to clean them up.
+
+`npx supabase test db --network-id supabase_network_PRGRS` runs rollback-only pgTAP checks. `npm run db:test` works without Docker using PGlite. See [current verification evidence](PRODUCTION_READINESS.md). Local configuration changes take effect on the next local stack restart; no hosted configuration is changed by editing this file.
 
 ### Automated checks
 
@@ -169,7 +183,25 @@ Playwright builds a separate local instance with test-only public configuration.
 
 ### Prepare Vercel, without deploying
 
-The repository is a standard Next.js project; no bespoke Vercel configuration is needed. When you authorize a deployment, choose Next.js, install with `npm ci`, build with `npm run build`, and use Node 24. Add the two public environment variables to the intended environment. `NEXT_PUBLIC_*` values are baked into the build: changing them requires a rebuild. Add your chosen HTTPS origin to Supabase Auth URLs. Apply reviewed migrations before serving the corresponding application version. Nothing in this repository auto-deploys.
+When deployment is authorized, configure:
+
+| Setting          | Value                                                |
+| ---------------- | ---------------------------------------------------- |
+| Framework / root | Next.js / repository root                            |
+| Node runtime     | 24.x (`.nvmrc` supplies the local default)           |
+| Install / build  | `npm ci` / `npm run build`                           |
+| Output directory | Next.js default; no static export or custom override |
+| Environment      | The two public Supabase values from section B        |
+
+Keep preview and production environments separate. Use a development Supabase project for previews; no broad production redirect wildcard. `NEXT_PUBLIC_*` values are baked into the build, so changes require rebuilding. Review automatic Git deployment settings before connecting a repository: this repository's workflow only verifies code and does not authorize publication. No Vercel project or deployment was created here.
+
+Apply reviewed migrations before serving the corresponding app. The public shell is statically rendered; `/api/me` runs as a server route with `no-store` responses. Do not add a rewrite that redirects API/static/service-worker requests to HTML. Hash navigation needs no custom rewrite. Preserve Next's immutable asset headers and `/sw.js` no-cache headers. Keep old deployment assets available during rollout and rollback; do not force-reload active workout windows. No custom CDN override or `vercel.json` is needed for standard Vercel Next.js hosting.
+
+Verify after an authorized deployment: HTTPS origin, expected project requests, production confirmation redirect, `/api/me` returning 401 without a token and 200 with a real token, security headers, service-worker installation, offline reload, and the [release gate](PRODUCTION_READINESS.md). A build alone does not verify Vercel or hosted Supabase behavior.
+
+### Optional monitoring and domains
+
+Use provider runtime logs and browser `[PRGRS]` events. `src/lib/observability.ts` records only a fixed context/category, rate limited per category; it excludes messages, stacks, workout payloads, IDs and tokens. A future monitoring adapter can subscribe to browser `prgrs:error` events or wrap the server hook. Never attach SDK request headers or training data by default. No vendor is required. For a custom domain, update the exact Supabase Site URL/allowlist and repeat confirmation/PWA checks. Monitor failed sync/auth rates and database latency before increasing the athlete population.
 
 ## 5. Actions requiring explicit authorization
 

@@ -31,6 +31,7 @@ Open <http://localhost:3000>. Without configured Supabase values the app shows s
 | `npm test`                                | Domain, JSON import, durable outbox tests           |
 | `npm run db:test`                         | Real PostgreSQL schema/RLS/RPC tests using PGlite   |
 | `npm run test:e2e`                        | Production build + Chromium and mobile WebKit flows |
+| `npm run test:integration`                | Real local Supabase Auth/PostgREST checks (Docker)  |
 | `npm run format:check` / `npm run format` | Check / apply formatting                            |
 | `npm run db:types`                        | Regenerate Supabase types from migrations           |
 | `npm run schema:generate`                 | Export JSON Schema from Zod                         |
@@ -44,6 +45,7 @@ Browser tests need `npx playwright install chromium webkit`. They use a test-onl
 - [Architecture](docs/ARCHITECTURE.md) — relational model, authorization, offline sync, conflict rules, decisions
 - [Program import](docs/PROGRAM_IMPORT.md) — versioned format, example, external AI instructions
 - [Testing](docs/TESTING.md) — automated and device checks
+- [Production release gate](docs/PRODUCTION_READINESS.md) — verified evidence, operator configuration and remaining release checks
 - [AGENTS.md](AGENTS.md) — persistent engineering requirements
 
 No external project was created and no deployment was performed. Local database tests do not verify hosted Supabase Auth delivery, PostgREST configuration, or physical-device PWA installation.

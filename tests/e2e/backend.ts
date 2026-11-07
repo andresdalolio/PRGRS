@@ -43,7 +43,7 @@ export async function backend() {
     for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
     const raw = Buffer.concat(chunks).toString();
     const incomingRequest = {
-      url: () => `http://127.0.0.1:54321${incoming.url}`,
+      url: () => `http://127.0.0.1:54331${incoming.url}`,
       method: () => incoming.method || 'GET',
       headers: () => incoming.headers,
       postDataJSON: () => (raw ? JSON.parse(raw) : null),
@@ -184,7 +184,7 @@ export async function backend() {
   });
   await new Promise<void>((resolve, reject) => {
     httpServer.once('error', reject);
-    httpServer.listen(54321, '127.0.0.1', resolve);
+    httpServer.listen(54331, '127.0.0.1', resolve);
   });
   return {
     db,

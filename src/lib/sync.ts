@@ -1,4 +1,5 @@
 import { type LocalDatabase, type Mutation } from './db';
+import { reportError } from './observability';
 export type SyncTransport = (mutation: Mutation) => Promise<void>;
 export async function flushOutbox(database: LocalDatabase, ownerId: string, send: SyncTransport) {
   const pending = (await database.outbox.where('ownerId').equals(ownerId).sortBy('createdAt')).sort(
@@ -14,6 +15,7 @@ export async function flushOutbox(database: LocalDatabase, ownerId: string, send
       await send(item);
       await database.outbox.delete(item.id);
     } catch (error) {
+      reportError('sync', error);
       const message = error instanceof Error ? error.message : 'Synchronization failed';
       await database.outbox.update(item.id, {
         attempts: item.attempts + 1,

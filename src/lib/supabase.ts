@@ -1,22 +1,19 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
+import { configuration } from './config';
+import { fetchWithTimeout } from './network';
 let client: SupabaseClient<Database> | null = null;
 export function configured() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY &&
-    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('YOUR_PROJECT'),
-  );
+  return !configuration().error;
 }
 export function supabase() {
-  if (!configured())
-    throw new Error('Connect Supabase first. See docs/SETUP_AND_CONFIGURATION.md.');
+  const config = configuration();
+  if (config.error) throw new Error(config.error);
   if (!client)
-    client = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
-    );
+    client = createClient<Database>(config.url!, config.key!, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      global: { fetch: fetchWithTimeout },
+    });
   return client;
 }
 export function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {

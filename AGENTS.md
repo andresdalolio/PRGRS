@@ -12,4 +12,5 @@ Read `docs/product/PRGRS_PRODUCT_SPEC.md`, `PRGRS_BRAND.md`, and `PRGRS_REFERENC
 - Keep light/dark themes, keyboard access, touch targets and safe areas working.
 
 Commands: `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run db:test`, `npm run test:e2e`, `npm run build`, `npm run format:check`.
+Use `npm run test:integration` for opt-in real local Supabase Auth/PostgREST verification (loopback + PRGRS Docker stack only). Browser test API uses port 54331 to avoid the local Supabase port 54321. Supabase CLI v3 defaults to local; hosted migration commands must explicitly use `--remote`. Build-generated release IDs isolate offline-shell caches; do not force worker activation during a workout. Use `src/lib/observability.ts` for sanitized error categories, never raw tokens or training logs.
 Run `npm run db:types` after SQL changes and `npm run schema:generate` after import-format changes. Add meaningful regression coverage for changed invariants. See `docs/ARCHITECTURE.md` and `docs/SETUP_AND_CONFIGURATION.md` for design and setup. Record unverified external behavior honestly. Maintain this file when conventions change.

@@ -1,5 +1,6 @@
 /* Public shell only. Auth responses and Supabase requests are NEVER cached here. */
-const SHELL = 'prgrs-shell-v2';
+// Registration includes a build ID so every release gets a separate, complete offline shell.
+const SHELL = `prgrs-shell-v3-${new URL(self.location.href).searchParams.get('build') || 'local'}`;
 const CORE = [
   '/',
   '/manifest.webmanifest',
@@ -37,9 +38,7 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.claim()),
   );
 });
-self.addEventListener('message', (event) => {
-  if (event.data === 'ACTIVATE_UPDATE') self.skipWaiting();
-});
+// Wait for existing windows to close; never replace a worker during an active workout.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (
@@ -52,15 +51,22 @@ self.addEventListener('fetch', (event) => {
     return;
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response.ok && url.pathname === '/') {
-            const copy = response.clone();
-            event.waitUntil(caches.open(SHELL).then((cache) => cache.put('/', copy)));
-          }
+      (async () => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        try {
+          const response = await fetch(event.request, { signal: controller.signal });
+          if (response.status >= 500) throw new Error('Shell unavailable');
+          if (response.body) await response.clone().arrayBuffer();
+          // Keep the precached HTML paired with its precached assets. A future release's
+          // network HTML must not overwrite the fallback while its worker is waiting.
           return response;
-        })
-        .catch(() => caches.match('/')),
+        } catch {
+          return (await (await caches.open(SHELL)).match('/')) || Response.error();
+        } finally {
+          clearTimeout(timer);
+        }
+      })(),
     );
   } else if (
     url.pathname.startsWith('/_next/static/') ||
@@ -69,17 +75,20 @@ self.addEventListener('fetch', (event) => {
     url.pathname === '/manifest.webmanifest'
   ) {
     event.respondWith(
-      caches.match(event.request).then(
-        (cached) =>
-          cached ||
-          fetch(event.request).then((response) => {
-            if (response.ok) {
-              const copy = response.clone();
-              event.waitUntil(caches.open(SHELL).then((cache) => cache.put(event.request, copy)));
-            }
-            return response;
-          }),
-      ),
+      caches
+        .open(SHELL)
+        .then((cache) => cache.match(event.request))
+        .then(
+          (cached) =>
+            cached ||
+            fetch(event.request).then((response) => {
+              if (response.ok) {
+                const copy = response.clone();
+                event.waitUntil(caches.open(SHELL).then((cache) => cache.put(event.request, copy)));
+              }
+              return response;
+            }),
+        ),
     );
   }
 });
