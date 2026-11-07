@@ -90,6 +90,9 @@ try {
           {
             day: 1,
             title: '10 exercise session',
+            description: 'Keep three reps in reserve.\nRecord your actual load.',
+            category: 'Strength',
+            estimatedMinutes: 45,
             blocks: [
               {
                 label: 'A',
@@ -117,6 +120,20 @@ try {
   await db.query('select public.assign_program($1,$2,$3)', [tenId, owner, '2026-11-04']);
   snapshots = (await db.query('select public.get_my_sessions() as data')).rows[0].data;
   const target = snapshots.find((s) => s.title === '10 exercise session');
+  check(
+    target.description === ten.weeks[0].workouts[0].description &&
+      target.category === 'Strength' &&
+      target.estimatedMinutes === 45,
+    'Assignment preserves workout description, category and estimated duration',
+  );
+  const malformed = structuredClone(ten);
+  malformed.weeks[0].workouts[0].estimatedMinutes = -1;
+  await fails(
+    'select public.save_program($1::jsonb)',
+    [JSON.stringify(malformed)],
+    /Invalid workout duration/,
+    'Server independently validates optional workout details',
+  );
   const log = {
     status: 'finished',
     finishedAt: '2026-11-04T15:00:00Z',
@@ -130,6 +147,28 @@ try {
       })),
   };
   const mutation = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const foreignLog = structuredClone(log);
+  foreignLog.results[0].entryId = session.blocks[0].entries[0].id;
+  await fails(
+    'select public.apply_session_mutation($1,$2,0,$3::jsonb)',
+    [mutation, target.id, JSON.stringify(foreignLog)],
+    /Invalid entry/,
+    'A log cannot reference an entry in a different workout',
+  );
+  const duplicateLog = structuredClone(log);
+  duplicateLog.results[1].entryId = duplicateLog.results[0].entryId;
+  await fails(
+    'select public.apply_session_mutation($1,$2,0,$3::jsonb)',
+    [mutation, target.id, JSON.stringify(duplicateLog)],
+    /exactly once/,
+    'A log cannot omit an entry by repeating another',
+  );
+  await fails(
+    'select public.apply_session_mutation($1,$2,0,$3::jsonb)',
+    [mutation, target.id, JSON.stringify({ ...log, finishedAt: null })],
+    /timestamp must match status/,
+    'Finished logs require a timestamp',
+  );
   check(
     (
       await db.query('select public.apply_session_mutation($1,$2,0,$3::jsonb) as version', [
@@ -179,12 +218,19 @@ try {
   const before = JSON.stringify(persisted.blocks);
   ten.weeks[0].workouts[0].blocks[0].entries[0].prescription = { reps: '999' };
   ten.weeks[0].workouts[0].title = 'Updated template';
+  ten.weeks[0].workouts[0].description = 'Changed description';
+  ten.weeks[0].workouts[0].category = 'Conditioning';
+  ten.weeks[0].workouts[0].estimatedMinutes = 30;
   await db.query('select public.save_program($1::jsonb,$2)', [JSON.stringify(ten), tenId]);
   persisted = (await db.query('select public.get_my_sessions() as data')).rows[0].data.find(
     (s) => s.id === target.id,
   );
   check(
-    JSON.stringify(persisted.blocks) === before && persisted.title === '10 exercise session',
+    JSON.stringify(persisted.blocks) === before &&
+      persisted.title === '10 exercise session' &&
+      persisted.description === target.description &&
+      persisted.category === 'Strength' &&
+      persisted.estimatedMinutes === 45,
     'Editing templates preserves the actual historical prescription and results',
   );
   check(
@@ -192,7 +238,56 @@ try {
       .workouts[0].title === 'Updated template',
     'Reusable program edits are saved separately',
   );
+  const exerciseId = persisted.blocks[0].entries[0].exerciseId;
+  await fails(
+    'update public.exercises set exercise_key=$1 where id=$2',
+    ['replaced-key', exerciseId],
+    /permission denied/,
+    'Stable exercise keys cannot be changed through the API',
+  );
+  await fails(
+    'update public.exercises set owner_id=$1 where id=$2',
+    [other, exerciseId],
+    /permission denied/,
+    'Exercise ownership cannot be transferred through the API',
+  );
+  await db.query('update public.exercises set name=$1,reference_url=$2 where id=$3', [
+    'Renamed movement',
+    'https://example.com/reference',
+    exerciseId,
+  ]);
+  let history = (await db.query('select public.get_my_sessions() as data')).rows[0].data.find(
+    (s) => s.id === target.id,
+  );
+  check(
+    JSON.stringify(history.blocks) === before,
+    'Library edits preserve historical names, references, prescriptions and results',
+  );
+  await db.query('select public.assign_program($1,$2,$3)', [tenId, owner, '2026-12-01']);
+  const future = (await db.query('select public.get_my_sessions() as data')).rows[0].data.find(
+    (s) => s.date === '2026-12-01',
+  );
+  check(
+    future.description === 'Changed description' &&
+      future.category === 'Conditioning' &&
+      future.estimatedMinutes === 30,
+    'New assignments snapshot edited workout details without changing previous sessions',
+  );
+  check(
+    future.blocks[0].entries[0].exerciseId === exerciseId &&
+      future.blocks[0].entries[0].name === 'Renamed movement',
+    'Future assignments use updated library details with the same exercise identity',
+  );
   await asUser(other);
+  check(
+    (
+      await db.query('update public.exercises set name=$1 where id=$2 returning id', [
+        'Tampered',
+        exerciseId,
+      ])
+    ).rows.length === 0,
+    'RLS prevents an unrelated athlete from changing library details',
+  );
   check(
     (await db.query('select * from public.workout_sessions')).rows.length === 0,
     'RLS hides another athlete’s sessions',
@@ -226,6 +321,21 @@ try {
     [JSON.stringify(input)],
     /Coach capability/,
     'Athlete cannot invoke coach import',
+  );
+  await db.exec('reset role');
+  await db.query("insert into public.user_roles(user_id,role) values($1,'coach')", [other]);
+  await asUser(other);
+  await fails(
+    'select public.save_program($1::jsonb,$2)',
+    [JSON.stringify(ten), tenId],
+    /Program unavailable/,
+    'A different coach cannot replace an owned program using its ID',
+  );
+  await fails(
+    'select public.assign_program($1,$2,$3)',
+    [tenId, other, '2026-12-01'],
+    /Program unavailable/,
+    'A different coach cannot assign an owned program using its ID',
   );
   await asUser(owner);
   await fails(

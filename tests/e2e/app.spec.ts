@@ -35,6 +35,9 @@ test('coach imports and assigns; athlete logs partially offline, reloads and syn
             {
               day: 1,
               title: 'Ten movements',
+              description: 'Stay controlled and record the work.',
+              category: 'Strength',
+              estimatedMinutes: 45,
               blocks: [
                 {
                   label: 'A',
@@ -72,6 +75,10 @@ test('coach imports and assigns; athlete logs partially offline, reloads and syn
     });
     await page.getByRole('button', { name: 'Open workout', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Ten movements.' })).toBeVisible();
+    await expect(
+      page.getByText('Stay controlled and record the work.', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText('Strength · 45 min estimated', { exact: true })).toBeVisible();
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;
     });
@@ -277,6 +284,14 @@ test('brand, authentication and coach editor remain accessible across responsive
     await page.evaluate(() => {
       location.hash = 'tab=coach';
     });
+    await page.getByRole('button', { name: 'Create program', exact: true }).click();
+    await expect(page.getByLabel('Workout description', { exact: true })).toBeVisible();
+    await page.getByLabel('Workout description', { exact: true }).fill('Move with control.');
+    await page.getByLabel('Category', { exact: true }).fill('Strength');
+    await page.getByLabel('Estimated duration (minutes)', { exact: true }).fill('45');
+    await page.getByRole('button', { name: 'Validate & preview' }).click();
+    await expect(page.getByText('Strength · 45 min estimated', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.getByRole('button', { name: 'Import JSON', exact: true }).click();
     await page.getByLabel('Program JSON', { exact: true }).fill('{broken');
     await page.getByRole('button', { name: 'Validate & preview' }).click();
@@ -290,6 +305,7 @@ test('brand, authentication and coach editor remain accessible across responsive
       path: `test-results/coach-${test.info().project.name}.png`,
       fullPage: true,
     });
+    await page.screenshot({ path: `test-results/coach-viewport-${test.info().project.name}.png` });
     await page.evaluate(() => {
       location.hash = 'tab=profile';
     });
@@ -307,6 +323,210 @@ test('brand, authentication and coach editor remain accessible across responsive
       path: `test-results/coach-dark-${test.info().project.name}.png`,
       fullPage: true,
     });
+    await page.screenshot({
+      path: `test-results/coach-dark-viewport-${test.info().project.name}.png`,
+    });
+  } finally {
+    await server.close();
+  }
+});
+
+test('reports pull failures and explicitly discards offline edits on sign-out', async ({
+  page,
+  context,
+}) => {
+  const server = await backend();
+  try {
+    const program = JSON.parse(await readFile('docs/examples/foundation.json', 'utf8'));
+    const id = (
+      await server.db.query<{ id: string }>('select public.save_program($1::jsonb) as id', [
+        JSON.stringify(program),
+      ])
+    ).rows[0].id;
+    await server.db.query('select public.assign_program($1,$2,$3)', [
+      id,
+      '11111111-1111-4111-8111-111111111111',
+      today(),
+    ]);
+    await page.goto('/');
+    await page.getByLabel('Email', { exact: true }).fill('alex@example.com');
+    await page.getByLabel('Password', { exact: true }).fill('password123');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Open workout', exact: true })).toBeVisible();
+    await expect(page.getByText('All changes saved', { exact: true })).toBeVisible();
+    // A failed read must not claim that the client is synchronized, even without queued writes.
+    server.setSessionReadError('Permission denied during refresh');
+    await page.evaluate(() => {
+      location.hash = 'tab=profile';
+    });
+    await page.getByRole('button', { name: 'Sync now', exact: true }).click();
+    await expect(page.getByText('Sync needs attention', { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Permission denied during refresh' }),
+    ).toBeVisible();
+    server.setSessionReadError(null);
+    await page.getByRole('button', { name: 'Sync now', exact: true }).click();
+    await expect(page.getByText('All changes saved', { exact: true })).toBeVisible();
+    await page.evaluate(() => {
+      location.hash = 'tab=home';
+    });
+    await page.getByRole('button', { name: 'Open workout', exact: true }).click();
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    await context.setOffline(true);
+    await page.getByLabel('Notes · B1', { exact: true }).fill('Explicitly discarded fixture');
+    await page.evaluate(() => {
+      location.hash = 'tab=profile';
+    });
+    await expect(
+      page.getByRole('button', { name: 'Export pending edits', exact: true }),
+    ).toBeVisible();
+    await page.getByText('Discard local data', { exact: true }).click();
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: 'Discard and sign out', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+    const counts = await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('prgrs-v1');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        return await Promise.all(
+          ['sessions', 'outbox', 'identities'].map(
+            (store) =>
+              new Promise<number>((resolve, reject) => {
+                const request = db.transaction(store).objectStore(store).count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+              }),
+          ),
+        );
+      } finally {
+        db.close();
+      }
+    });
+    expect(counts).toEqual([0, 0, 0]);
+    expect(
+      Number(
+        (await server.db.query<{ n: number }>('select count(*) as n from public.sync_receipts'))
+          .rows[0].n,
+      ),
+    ).toBe(0);
+  } finally {
+    await context.setOffline(false);
+    await server.close();
+  }
+});
+
+test('aggregates multiple daily workouts, excludes instructions and shows stable exercise history', async ({
+  page,
+}) => {
+  const server = await backend();
+  try {
+    const workout = (title: string, day: number, count: number) => ({
+      title,
+      day,
+      blocks: [
+        {
+          label: 'A',
+          kind: 'circuit',
+          entries: Array.from({ length: count }, (_, i) => ({
+            exerciseKey: `shared-${i}`,
+            name: `Shared exercise ${i + 1}`,
+            label: `A${i + 1}`,
+          })),
+        },
+        {
+          label: 'B',
+          kind: 'instruction',
+          entries: [
+            {
+              exerciseKey: 'breathing',
+              name: 'Breathing instructions',
+              label: 'B',
+              eligible: false,
+            },
+          ],
+        },
+      ],
+    });
+    const program = {
+      schemaVersion: 1,
+      name: 'Weighted daily training',
+      weeks: [
+        {
+          week: 1,
+          workouts: [
+            workout('Morning training', 1, 1),
+            workout('Evening training', 1, 9),
+            workout('Future training', 2, 1),
+          ],
+        },
+      ],
+    };
+    const id = (
+      await server.db.query<{ id: string }>('select public.save_program($1::jsonb) as id', [
+        JSON.stringify(program),
+      ])
+    ).rows[0].id;
+    await server.db.query('select public.assign_program($1,$2,$3)', [
+      id,
+      '11111111-1111-4111-8111-111111111111',
+      today(),
+    ]);
+    const morning = (
+      await server.db.query<{ data: import('../../src/lib/domain').WorkoutSession[] }>(
+        'select public.get_my_sessions() as data',
+      )
+    ).rows[0].data.find((s) => s.title === 'Morning training')!;
+    await server.db.query('select public.apply_session_mutation($1,$2,0,$3::jsonb)', [
+      crypto.randomUUID(),
+      morning.id,
+      JSON.stringify({
+        status: 'finished',
+        finishedAt: new Date().toISOString(),
+        results: morning.blocks
+          .flatMap((b) => b.entries)
+          .map((e) => ({
+            entryId: e.id,
+            completed: e.eligible,
+            load: e.eligible ? '42 kg' : '',
+            notes: '',
+          })),
+      }),
+    ]);
+    await page.goto('/');
+    await page.getByLabel('Email', { exact: true }).fill('alex@example.com');
+    await page.getByLabel('Password', { exact: true }).fill('password123');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Open workout', exact: true })).toBeVisible();
+    await page.evaluate(() => {
+      location.hash = 'tab=workouts';
+    });
+    await page.getByRole('button', { name: 'day', exact: true }).click();
+    await expect(
+      page.getByText(
+        'Day exercise completion: 10% · 1/10 exercises. Workout adherence: 50% · 1/2 due sessions finished.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await page.getByRole('button', { name: /Evening training/ }).click();
+    await expect(page.locator('.last-result').first()).toContainText('42 kg');
+    await page.getByRole('button', { name: 'View history', exact: true }).first().click();
+    await expect(page.getByRole('dialog')).toContainText('42 kg');
+    await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+    await page.getByRole('button', { name: 'Your workouts', exact: true }).click();
+    await page.getByRole('button', { name: 'day', exact: true }).click();
+    await page.getByRole('button', { name: 'Next day', exact: true }).click();
+    await expect(
+      page.getByText(
+        'Day exercise completion: 0% · 0/1 exercises. Workout adherence: N/A · 0/0 due sessions finished.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /Future training/ })).toContainText('scheduled');
   } finally {
     await server.close();
   }

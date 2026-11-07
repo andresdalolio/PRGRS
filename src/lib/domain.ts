@@ -48,6 +48,9 @@ export type WorkoutSession = {
   assignmentId: string;
   date: string;
   title: string;
+  description?: string;
+  category?: string;
+  estimatedMinutes?: number | null;
   status: SessionStatus;
   finishedAt: string | null;
   version: number;
@@ -94,9 +97,28 @@ export function adherence(sessions: WorkoutSession[], today: string) {
 }
 export function statusLabel(s: WorkoutSession, today: string) {
   if (s.status === 'finished')
-    return completion([s]).percent === 100 ? 'Finished' : 'Finished · partial';
+    return completion([s]).percent === null
+      ? 'Finished · rest / instructions'
+      : completion([s]).percent === 100
+        ? 'Finished'
+        : 'Finished · partial';
+  if (!s.blocks.some((b) => b.entries.some((e) => e.eligible))) return 'Rest / instructions';
   if (s.status === 'scheduled' && s.date < today) return 'Missed';
   return s.status.replace('_', ' ');
+}
+export function exerciseHistory(sessions: WorkoutSession[], current: WorkoutSession, entry: Entry) {
+  if (!entry.exerciseId) return [];
+  return sessions
+    .filter(
+      (s) => s.athleteId === current.athleteId && s.id !== current.id && s.date <= current.date,
+    )
+    .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
+    .flatMap((s) =>
+      s.blocks
+        .flatMap((b) => b.entries)
+        .filter((e) => e.exerciseId === entry.exerciseId && (e.load || e.notes || e.completed))
+        .map((e) => ({ session: s, entry: e })),
+    );
 }
 export function todayInZone(zone: string, now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {

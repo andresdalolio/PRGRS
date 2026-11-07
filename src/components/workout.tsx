@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight, Check, CheckCheck, History, RotateCcw } from '
 import { db, editSession } from '@/lib/db';
 import {
   completion,
+  exerciseHistory,
   formatDate,
   prescriptionText,
   safeUrl,
@@ -49,16 +50,7 @@ export default function Workout({
       s.status = 'in_progress';
     });
   }
-  const previous = (entry: Entry) =>
-    sessions
-      .filter((s) => s.id !== session.id && s.date <= session.date)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
-      .flatMap((s) =>
-        s.blocks
-          .flatMap((b) => b.entries)
-          .filter((e) => e.exerciseId === entry.exerciseId && (e.load || e.notes || e.completed))
-          .map((e) => ({ session: s, entry: e })),
-      );
+  const previous = (entry: Entry) => exerciseHistory(sessions, session, entry);
   return (
     <>
       <button className="back-link" onClick={onBack}>
@@ -78,6 +70,17 @@ export default function Workout({
             {session.blocks.length} blocks · {c.total} exercises ·{' '}
             {session.status.replace('_', ' ')}
           </p>
+          {(session.category || session.estimatedMinutes) && (
+            <p className="muted">
+              {[
+                session.category,
+                session.estimatedMinutes ? `${session.estimatedMinutes} min estimated` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          )}
+          {session.description && <p className="workout-description">{session.description}</p>}
         </div>
         <span className={`badge ${finished ? 'success' : ''}`}>
           {finished ? <CheckCheck size={17} /> : null}

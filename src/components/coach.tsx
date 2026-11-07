@@ -16,7 +16,15 @@ import {
 } from 'lucide-react';
 import { supabase, unwrap } from '@/lib/supabase';
 import { blankProgram, parseProgram, programSchema, type ProgramInput } from '@/lib/import';
-import { adherence, completion, formatDate, safeUrl, type WorkoutSession } from '@/lib/domain';
+import {
+  adherence,
+  completion,
+  formatDate,
+  prescriptionText,
+  safeUrl,
+  todayInZone,
+  type WorkoutSession,
+} from '@/lib/domain';
 import type { Identity } from '@/lib/db';
 import { Empty, Modal, Notice } from './ui';
 type Exercise = {
@@ -33,7 +41,11 @@ type Program = {
   version: number;
   created_at: string;
 };
-type Relationship = { athlete_id: string; accepted: boolean; profiles: { name: string } | null };
+type Relationship = {
+  athlete_id: string;
+  accepted: boolean;
+  profiles: { name: string; timezone: string } | null;
+};
 export default function Coach({
   identity,
   sessions,
@@ -85,7 +97,7 @@ export default function Coach({
       unwrap(
         await supabase()
           .from('coach_athletes')
-          .select('athlete_id,accepted,profiles!coach_athletes_athlete_id_fkey(name)')
+          .select('athlete_id,accepted,profiles!coach_athletes_athlete_id_fkey(name,timezone)')
           .eq('coach_id', identity.id),
       ) as unknown as Relationship[],
   });
@@ -152,7 +164,7 @@ export default function Coach({
   const queryError = programsQuery.error || exercisesQuery.error || athletesQuery.error;
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading coach-heading">
         <div>
           <span className="section-kicker">THE PLAN BEHIND THE PROGRESS</span>
           <h1>
@@ -165,15 +177,14 @@ export default function Coach({
           Create program
         </button>
       </div>
-      <div className="coach-tabs" role="tablist" aria-label="Coach sections">
+      <div className="coach-tabs" role="group" aria-label="Coach sections">
         {[
           { id: 'programs', label: 'Programs', icon: BookOpen },
           { id: 'exercises', label: 'Exercise library', icon: Check },
           { id: 'athletes', label: 'Athletes', icon: Users },
         ].map(({ id, label, icon: Icon }) => (
           <button
-            role="tab"
-            aria-selected={section === id}
+            aria-pressed={section === id}
             className={section === id ? 'active' : ''}
             key={id}
             onClick={() => setSection(id as typeof section)}
@@ -349,6 +360,15 @@ export default function Coach({
                           <strong>
                             Day {d.day} · {d.title}
                           </strong>
+                          <p>
+                            {[
+                              d.category,
+                              d.estimatedMinutes ? `${d.estimatedMinutes} min estimated` : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                          {d.description && <p>{d.description}</p>}
                           {d.blocks.map((b, j) => (
                             <div key={j}>
                               <span className="badge">
@@ -357,14 +377,7 @@ export default function Coach({
                               <p>{b.instructions}</p>
                               {b.entries.map((e, k) => (
                                 <p key={k}>
-                                  {e.label} {e.name} ·{' '}
-                                  {e.prescription.text ||
-                                    [
-                                      e.prescription.sets && `${e.prescription.sets} sets`,
-                                      e.prescription.reps && `${e.prescription.reps} reps`,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(' · ')}
+                                  {e.label} {e.name} · {prescriptionText(e.prescription)}
                                   {!e.eligible ? ' · reference only' : ''}
                                 </p>
                               ))}
@@ -518,13 +531,14 @@ export default function Coach({
             {
               athlete_id: identity.id,
               accepted: true,
-              profiles: { name: `${identity.name} (you)` },
+              profiles: { name: `${identity.name} (you)`, timezone: identity.timezone },
             },
             ...athletes,
           ].map((a) => {
             const training = sessions.filter((s) => s.athleteId === a.athlete_id),
-              c = completion(training.filter((s) => s.date <= today)),
-              ad = adherence(training, today);
+              athleteToday = a.profiles ? todayInZone(a.profiles.timezone) : today,
+              c = completion(training.filter((s) => s.date <= athleteToday)),
+              ad = adherence(training, athleteToday);
             return (
               <div className="athlete-row" key={a.athlete_id}>
                 <div className="row between wrap">
@@ -559,7 +573,9 @@ export default function Coach({
                               <h3>{s.title}</h3>
                               <p>
                                 {formatDate(s.date)} · {s.status.replace('_', ' ')} ·{' '}
-                                {completion([s]).percent ?? 'N/A'}%
+                                {completion([s]).percent === null
+                                  ? 'N/A'
+                                  : `${completion([s]).percent}%`}
                               </p>
                               {s.blocks
                                 .flatMap((b) => b.entries)
@@ -659,7 +675,14 @@ export default function Coach({
                   throw new Error('Use up to 20 aliases, each at most 100 characters.');
                 unwrap(
                   exercise.id
-                    ? await supabase().from('exercises').update(record).eq('id', exercise.id)
+                    ? await supabase()
+                        .from('exercises')
+                        .update({
+                          name: record.name,
+                          aliases: record.aliases,
+                          reference_url: record.reference_url,
+                        })
+                        .eq('id', exercise.id)
                     : await supabase().from('exercises').insert(record),
                 );
                 await queryClient.invalidateQueries({ queryKey: ['exercises'] });
@@ -827,6 +850,49 @@ function Builder({
                   <Trash2 size={18} />
                 </button>
               </div>
+              <div className="form-grid">
+                <label>
+                  Category
+                  <input
+                    value={workout.category ?? ''}
+                    maxLength={80}
+                    onChange={(e) =>
+                      change((v) => {
+                        v.weeks[wi].workouts[di].category = e.target.value;
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Estimated duration (minutes)
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={workout.estimatedMinutes ?? ''}
+                    onChange={(e) =>
+                      change((v) => {
+                        v.weeks[wi].workouts[di].estimatedMinutes = e.target.value
+                          ? Number(e.target.value)
+                          : undefined;
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <label>
+                Workout description
+                <textarea
+                  rows={3}
+                  value={workout.description ?? ''}
+                  maxLength={2000}
+                  onChange={(e) =>
+                    change((v) => {
+                      v.weeks[wi].workouts[di].description = e.target.value;
+                    })
+                  }
+                />
+              </label>
               {workout.blocks.map((block, bi) => (
                 <div className="builder-block stack" key={bi}>
                   <div className="row align-end wrap">
@@ -1143,6 +1209,8 @@ function Builder({
                   v.weeks[wi].workouts.push({
                     day: Math.min(7, week.workouts.length + 1),
                     title: 'New workout',
+                    description: '',
+                    category: '',
                     blocks: [{ label: 'A', kind: 'single', instructions: '', entries: [] }],
                   });
                 })

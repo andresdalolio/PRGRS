@@ -37,6 +37,7 @@ export async function backend() {
     'test-signature',
   ].join('.');
   let online = true;
+  let sessionReadError: string | null = null;
   const httpServer = createServer(async (incoming, response) => {
     const chunks: Buffer[] = [];
     for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
@@ -116,6 +117,7 @@ export async function backend() {
       if (path.startsWith('/rest/v1/rpc/')) {
         const name = path.split('/').pop(),
           args = request.postDataJSON() || {};
+        if (name === 'get_my_sessions' && sessionReadError) throw new Error(sessionReadError);
         if (name === 'get_my_sessions')
           data = (await db.query<{ result: unknown }>('select public.get_my_sessions() as result'))
             .rows[0].result;
@@ -188,6 +190,9 @@ export async function backend() {
     db,
     setOnline(value: boolean) {
       online = value;
+    },
+    setSessionReadError(value: string | null) {
+      sessionReadError = value;
     },
     async close() {
       httpServer.closeAllConnections();

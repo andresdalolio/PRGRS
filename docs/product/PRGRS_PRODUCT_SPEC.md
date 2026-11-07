@@ -19,6 +19,7 @@ Start with a single person who can act as both athlete and coach, but design acc
 ## 2. Core experiences
 
 ### 2.1 Athlete dashboard
+
 - Today's scheduled workout: title/type/date/status/progress and open/continue action.
 - Summary of this week's scheduled and finished workouts and eligible exercise completion.
 - Monthly overview of adherence/completion, recent sessions, quick route to history.
@@ -26,6 +27,7 @@ Start with a single person who can act as both athlete and coach, but design acc
 - Prefer a concise dashboard with a few meaningful metrics over complicated analytics.
 
 ### 2.2 Workout calendar
+
 - Day, week and month navigation; default to week on mobile.
 - Clearly distinguish scheduled, in progress, finished, missed, skipped, and rest days.
 - Select a day to open its workout(s); support past history and upcoming programming.
@@ -33,6 +35,7 @@ Start with a single person who can act as both athlete and coach, but design acc
 - Preserve correct handling of multiple workouts on a single day.
 
 ### 2.3 Workout detail
+
 - Display date/title/category, optional description, instructions, estimated duration, exercise blocks, notes and progress.
 - Block structure supports individual exercise, superset, circuit, EMOM, AMRAP, For Time, warm-up, cooldown and instruction-only sections.
 - Preserve exercise order and group labels (A, B1, B2, C, etc.); support varying prescriptions: sets, reps, duration, rounds, distance, calories, tempo, rest, load and text instructions.
@@ -42,12 +45,14 @@ Start with a single person who can act as both athlete and coach, but design acc
 - Present last-used result, and a View History action to inspect previous sessions of the same stable exercise definition.
 
 ### 2.4 Finish workout without requiring perfection
+
 - Show **Finish Workout** at the end of a session.
-- Finishing changes the session status to *finished* and stores a timestamp; it does **not** auto-check remaining exercises.
-- Example: 9 of 10 eligible exercises checked -> session status *finished*, exercise completion **90%**.
+- Finishing changes the session status to _finished_ and stores a timestamp; it does **not** auto-check remaining exercises.
+- Example: 9 of 10 eligible exercises checked -> session status _finished_, exercise completion **90%**.
 - Support intentional reopening/editing and persistent history. Distinguish session finalization from completion percentage.
 
 ### 2.5 Coach/admin interface
+
 - Coach is a role, not a separate mandatory account. Same user may hold athlete + coach roles.
 - Create/edit and reuse programs and workout templates; arrange weeks/days/blocks/exercises; prescribe targets and add exercise references.
 - Assign a program to an athlete on a schedule; preserve history if templates or future assignments change.
@@ -56,6 +61,7 @@ Start with a single person who can act as both athlete and coach, but design acc
 - Basic athlete management/progress review for multi-user readiness, without complex coaching business features.
 
 ### 2.6 AI-authored JSON program import
+
 - The coach can paste/upload structured program JSON generated elsewhere by an AI assistant.
 - Define and version a clear import schema, validated (e.g. with Zod), covering program details, weeks, sessions, blocks, exercises, prescriptions, rest/tempo/notes/reference URLs.
 - Validate, display errors, preview and require confirmation before saving/assigning.
@@ -68,7 +74,7 @@ Start with a single person who can act as both athlete and coach, but design acc
 - **Exercise completion percentage:** completed eligible exercise entries / all eligible exercise entries in scope × 100. Exclude instruction-only items and rest days.
 - **Day/week/month exercise completion:** aggregate numerator and denominator over eligible exercises scheduled within the chosen date range. Use weighted aggregate counts rather than averaging percentages, unless deliberately presenting a different labeled metric.
 - **Workout adherence:** number of finished scheduled sessions / number of scheduled sessions due, excluding future sessions and rest days. Keep distinct from exercise completion.
-- A finished workout can be <100% complete. Partial and missed states need coherent visual labels; status may remain *finished* with partial completion.
+- A finished workout can be <100% complete. Partial and missed states need coherent visual labels; status may remain _finished_ with partial completion.
 - Define treatment of skipped, rescheduled and currently in-progress sessions; avoid treating future workouts as missed.
 - When a range has no eligible workouts, display N/A or a helpful empty state rather than misleading 0% or 100%.
 - All stats derive from stored records, including locally pending updates when offline. Clearly label sync state.
@@ -76,12 +82,13 @@ Start with a single person who can act as both athlete and coach, but design acc
 ## 4. Offline-first requirement (must shape architecture from the start)
 
 Use cases:
+
 1. Open already-synchronized workouts with poor or no gym signal.
 2. Tick/untick exercises, edit weights/notes, finish sessions offline.
 3. Changes persist across app refresh/relaunch without relying solely on memory.
 4. Pending operations safely sync after reconnection/app reopening; avoid duplicates, prevent silent loss, handle failures and conflicts explicitly.
 
-Suggested design (not a mandate): service worker + web app manifest for offline shell/installability; IndexedDB (Dexie) for structured cache, persistent mutation queue; server source of truth in Supabase Postgres; optimistic UI. TanStack Query alone is not sufficient for persistent offline writes. Do not assume background sync APIs will always run (particularly on iOS). Indicate *offline*, *pending*, *synced*, *error* accurately. Define retry, idempotency, record version and conflict-handling policy. Consider secure handling of cached personally identifiable/training data, logout behavior, and shared devices.
+Suggested design (not a mandate): service worker + web app manifest for offline shell/installability; IndexedDB (Dexie) for structured cache, persistent mutation queue; server source of truth in Supabase Postgres; optimistic UI. TanStack Query alone is not sufficient for persistent offline writes. Do not assume background sync APIs will always run (particularly on iOS). Indicate _offline_, _pending_, _synced_, _error_ accurately. Define retry, idempotency, record version and conflict-handling policy. Consider secure handling of cached personally identifiable/training data, logout behavior, and shared devices.
 
 **Acceptance example:** Open cached Monday workout in installed PWA, disable internet, mark several entries and add weight, force close/reopen, see those edits intact; reconnect and verify records arrive exactly once in database.
 
@@ -103,6 +110,7 @@ Suggested design (not a mandate): service worker + web app manifest for offline 
 - During workouts prioritize exercise name, prescription, checkbox, results, prior record and reference action. Avoid busy charts or unnecessary steps.
 
 ### 6.1 Brand implementation cross-reference (2026-11-07)
+
 - The approved Bold PR 01 app icon and Acid Green brand direction are documented in `PRGRS_BRAND.md` and the accompanying brand assets. New or refreshed UI should use that identity consistently.
 - This visual identity update **does not change** workout completion semantics, database contracts, role boundaries, offline reliability or deferred features.
 

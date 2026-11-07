@@ -21,6 +21,9 @@
               "properties": {
                 "day": { "type": "integer", "minimum": 1, "maximum": 7 },
                 "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+                "description": { "type": "string", "maxLength": 2000 },
+                "category": { "type": "string", "maxLength": 80 },
+                "estimatedMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
                 "blocks": {
                   "minItems": 1,
                   "maxItems": 30,

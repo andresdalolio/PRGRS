@@ -8,7 +8,7 @@ Product behavior and approved copy remain governed by `product/PRGRS_PRODUCT_SPE
 
 Success, warning, destructive, offline, pending and sync errors have separate tokens. State labels/icons accompany colors. Acid Green is for key actions and selected accents; light-theme green text uses the darker `--accent-ink`. The dashboard's Carbon workout card uses fixed on-dark colors in either theme. `tests/design.test.ts` verifies actual token pairings against AA text and control contrast thresholds.
 
-System appearance is the default; Profile stores explicit light/dark/system preference using the existing local setting. No remote font dependency: system Arial/Helvetica with tabular numerals. Shared cards, buttons, inputs, notices and dialogs apply to athlete and coach views. Coach builders use nested bordered groups; workout cards retain prominent completion controls, prescriptions, load/notes, prior results and history/reference actions.
+System appearance is the default; Profile stores explicit light/dark/system preference using the existing local setting. No remote font dependency: system Arial/Helvetica with tabular numerals. Shared cards, buttons, inputs, notices and dialogs apply to athlete and coach views. The Create program action remains available at phone widths. Workout descriptions and multiline prescriptions preserve line breaks; mobile description inputs use 16px type to avoid focus zoom. Calendar summaries distinguish weighted exercise completion from due-session adherence, and month cards include text status labels. Coach builders use nested bordered groups; workout cards retain prominent completion controls, prescriptions, load/notes, prior results and history/reference actions.
 
 ## Artwork and platform icons
 

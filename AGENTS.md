@@ -5,8 +5,8 @@ Read `docs/product/PRGRS_PRODUCT_SPEC.md`, `PRGRS_BRAND.md`, and `PRGRS_REFERENC
 - Keep MVP limited to programming, training, results, history, progress, auth and offline sync. No nutrition, messaging, payments, social, wearables or in-app AI generation.
 - Accounts may have both athlete and coach capabilities. Enforce access in Supabase RLS and RPCs, never just UI.
 - A finished session is distinct from exercise completion. Finishing 9/10 MUST remain finished at 90%. Instruction-only entries never count.
-- Store session prescription snapshots separately from reusable templates. Template edits must never rewrite athlete history. Exercise history uses stable IDs.
-- Workout edits must atomically persist in IndexedDB with their outbox mutation. Preserve unsynced edits on reload, retries, conflicts and authentication expiry. Server acknowledgements are idempotent. Never silently discard local edits.
+- Store session prescription snapshots separately from reusable templates. Template edits must never rewrite athlete history. Exercise history uses stable IDs; browser updates must not change exercise keys or ownership.
+- Workout edits must atomically persist in IndexedDB with their outbox mutation. Preserve unsynced edits on reload, retries, conflicts and authentication expiry. Server acknowledgements are idempotent. Never silently discard local edits. Conflict choices must match the reviewed local version; explicit discard must reject newly queued work.
 - Metrics aggregate numerators and denominators; adherence excludes future sessions and rest. Use athlete timezone. Empty denominator is N/A.
 - No service-role/secret keys in browser code. Never commit credentials. No public deploy, production reset or external account changes without explicit authorization.
 - Keep light/dark themes, keyboard access, touch targets and safe areas working.

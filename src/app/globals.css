@@ -1635,6 +1635,13 @@ input:read-only {
   font-size: 15px;
   font-weight: 600;
 }
+.workout-description,
+.prescription,
+.block-header p,
+.exercise-title .muted {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .result-fields label,
 .last-result,
 .exercise-bottom .text-button {
@@ -2438,6 +2445,19 @@ h3 {
   }
   .modal {
     padding-bottom: calc(22px + env(safe-area-inset-bottom));
+  }
+  .program-builder textarea {
+    font-size: 16px;
+  }
+  .coach-heading {
+    flex-direction: column;
+  }
+  .coach-heading > .button {
+    display: inline-flex;
+  }
+  .month-grid .calendar-date {
+    min-height: 44px;
+    width: 100%;
   }
 }
 

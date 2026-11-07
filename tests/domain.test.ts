@@ -7,6 +7,7 @@ import {
   shiftDate,
   weekStart,
   safeUrl,
+  exerciseHistory,
 } from '../src/lib/domain';
 import { fixture } from './fixtures/session';
 describe('training invariants', () => {
@@ -59,5 +60,31 @@ describe('training invariants', () => {
     expect(safeUrl('https://youtu.be/abc')).toBeTruthy();
     expect(safeUrl('javascript:alert(1)')).toBeNull();
     expect(safeUrl('no link')).toBeNull();
+  });
+  it('keeps rest days out of missed/partial labels', () => {
+    const rest = fixture(0, 0, '2026-11-01');
+    expect(statusLabel(rest, '2026-11-06')).toBe('Rest / instructions');
+    rest.status = 'finished';
+    expect(statusLabel(rest, '2026-11-06')).toBe('Finished · rest / instructions');
+  });
+  it('history uses stable identity across renamed exercises and isolates athletes', () => {
+    const current = fixture(),
+      previous = fixture(10, 1, '2026-11-05');
+    previous.blocks[0].entries[0].name = 'Earlier name';
+    const unrelated = fixture(10, 1, '2026-11-05');
+    unrelated.athleteId = 'another-athlete';
+    const sameName = fixture(10, 1, '2026-11-05');
+    sameName.blocks[0].entries[0].exerciseId = 'different-movement';
+    const future = fixture(10, 1, '2026-11-07');
+    expect(
+      exerciseHistory(
+        [current, previous, unrelated, sameName, future],
+        current,
+        current.blocks[0].entries[0],
+      ).map((r) => r.session.id),
+    ).toEqual([previous.id]);
+    current.blocks[0].entries[0].exerciseId = null;
+    previous.blocks[0].entries[0].exerciseId = null;
+    expect(exerciseHistory([previous], current, current.blocks[0].entries[0])).toEqual([]);
   });
 });

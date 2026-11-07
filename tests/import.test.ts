@@ -8,6 +8,9 @@ describe('program import', () => {
     expect(p.weeks[0].workouts).toHaveLength(3);
     expect(p.weeks[0].workouts[0].blocks[1].entries.map((e) => e.label)).toEqual(['B1', 'B2']);
     expect(p.weeks[0].workouts[0].blocks[1].entries[0].prescription.rest).toBe('90 seconds');
+    // Preserve the serialized input used by existing server duplicate checksums.
+    expect(p.weeks[0].workouts[0]).not.toHaveProperty('category');
+    expect(p.weeks[0].workouts[0]).not.toHaveProperty('description');
   });
   it('reports actionable malformed JSON', () => {
     expect(() => parseProgram('{bad')).toThrow('Invalid JSON');
@@ -39,6 +42,27 @@ describe('program import', () => {
   it('rejects unsafe links', () => {
     const data = JSON.parse(valid);
     data.weeks[0].workouts[0].blocks[0].entries[0].referenceUrl = 'javascript:alert(1)';
+    expect(programSchema.safeParse(data).success).toBe(false);
+  });
+  it('round-trips optional workout details and validates duration and category', () => {
+    const data = JSON.parse(valid);
+    const workout = data.weeks[0].workouts[0];
+    Object.assign(workout, {
+      description: 'Train with control',
+      category: 'Strength',
+      estimatedMinutes: 45,
+    });
+    expect(parseProgram(JSON.stringify(data)).weeks[0].workouts[0]).toMatchObject({
+      description: 'Train with control',
+      category: 'Strength',
+      estimatedMinutes: 45,
+    });
+    for (const minutes of [0, -1, 1441, 1.5, '45', null]) {
+      workout.estimatedMinutes = minutes;
+      expect(programSchema.safeParse(data).success).toBe(false);
+    }
+    workout.estimatedMinutes = 45;
+    workout.category = 'x'.repeat(81);
     expect(programSchema.safeParse(data).success).toBe(false);
   });
 });

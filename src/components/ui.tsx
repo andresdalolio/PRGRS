@@ -38,6 +38,7 @@ export function Meter({ value, label }: { value: number | null; label: string })
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={value ?? undefined}
+      aria-valuetext={value === null ? 'No eligible exercises' : `${value}%`}
     >
       <span style={{ width: `${value ?? 0}%` }} />
     </div>

@@ -71,6 +71,8 @@ Use Coach studio → Import JSON. Paste or upload a UTF-8 `.json` file below 2 M
 | `aliases`                   | Optional list, at most 20 items of 1–100 characters                                               |
 | `prescription`              | Optional object; see below                                                                        |
 
+Workouts also accept optional `description` (up to 2,000 characters), `category` (up to 80 characters), and `estimatedMinutes` (integer 1–1440; omit when unknown). They appear in the builder and preview and are copied into each assigned session. Existing v1 files remain valid. Assigned history retains the details originally prescribed when templates change.
+
 Structured prescription numeric fields: `sets` (1–100), `rounds` (1–1000), `calories` (1–10000). String fields: `reps`, `load`, `duration`, `distance`, `tempo`, `rest`, `text` (each ≤2,000 characters). Use text to express complex training without inventing fields. For EMOM/AMRAP/For Time, describe total timing and grouping in block instructions; entries can have duration/rounds/distance/calories as appropriate. All arrays retain their supplied order.
 
 The importer resolves exercises by `(coach, exerciseKey)`. It reuses existing library records; the library's canonical name/reference is used when assigning. It does not deduplicate by similar names or aliases. Importing identical normalized JSON twice is rejected by a server content checksum; this checksum is duplicate detection, not a cryptographic security boundary. Editing an existing program preserves its ID and increments its version, while existing assignments retain snapshots. To intentionally duplicate a plan, give the copy a distinct name.

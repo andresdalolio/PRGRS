@@ -99,18 +99,20 @@ export async function resolveConflict(
   ownerId: string,
   remote: WorkoutSession,
   choice: 'local' | 'remote',
+  reviewedVersion: number,
 ) {
   await database.transaction('rw', database.sessions, database.outbox, async () => {
     const pending = await database.outbox.where('sessionId').equals(remote.id).toArray();
     if (pending.some((m) => m.ownerId !== ownerId) || remote.athleteId !== ownerId)
       throw new Error('Account mismatch');
     const local = await database.sessions.get(remote.id);
+    if (!local || local.version !== reviewedVersion)
+      throw new Error('This workout changed since review. Close and review both versions again.');
     await database.outbox.bulkDelete(pending.map((m) => m.id));
     if (choice === 'remote') {
       await database.sessions.put(remote);
       return;
     }
-    if (!local) throw new Error('Local workout missing');
     await database.sessions.put({ ...local, version: remote.version + 1 });
     await database.outbox.add({
       id: crypto.randomUUID(),
@@ -122,6 +124,33 @@ export async function resolveConflict(
       attempts: 0,
     });
   });
+}
+export async function discardAccount(
+  database: LocalDatabase,
+  ownerId: string,
+  reviewedMutationIds: string[],
+) {
+  await database.transaction(
+    'rw',
+    database.sessions,
+    database.outbox,
+    database.identities,
+    async () => {
+      const pending = await database.outbox.toArray();
+      const identities = await database.identities.toArray();
+      const reviewed = new Set(reviewedMutationIds);
+      if (
+        identities.some((i) => i.id !== ownerId) ||
+        pending.some((m) => m.ownerId !== ownerId || !reviewed.has(m.id))
+      )
+        throw new Error(
+          'Local work changed. Review and export pending edits before discarding again.',
+        );
+      await database.sessions.clear();
+      await database.outbox.clear();
+      await database.identities.clear();
+    },
+  );
 }
 export async function clearAccount(database: LocalDatabase, requireSynced = false) {
   await database.transaction(

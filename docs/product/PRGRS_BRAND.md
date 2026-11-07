@@ -53,7 +53,7 @@ The application combines a practical training plan, frictionless recording, and 
 
 **Approved visual direction:** Bold PR 01, Acid Green + Carbon. The approved visual master is `public/brand/PRGRS_Approved_Bold_PR_01.png`, copied from the icon explicitly approved on 2026-11-07. This is the authoritative **visual reference** for the PR monogram. Do not redraw, alter its P/R geometry, add blur, overlay, cutouts, shadows, gradients, stripes, or replace it with one of the earlier exploratory designs. The latest approved PR letters are bold, legible, italic/geometric and solid dark on an acid-green rounded-square icon.
 
-**PR** can evoke *Personal Record*, a familiar fitness concept; **PRGRS** remains the full product name and references progress beyond any single record. This is a brand narrative, not authorization to build PR dashboards outside MVP scope.
+**PR** can evoke _Personal Record_, a familiar fitness concept; **PRGRS** remains the full product name and references progress beyond any single record. This is a brand narrative, not authorization to build PR dashboards outside MVP scope.
 
 The base exported master is a raster PNG, not editable vector artwork. Any future vector reconstruction must be manually checked against the master and separately approved; do not present an approximate SVG as the definitive logo.
 
@@ -61,12 +61,12 @@ The base exported master is a raster PNG, not editable vector artwork. Any futur
 
 The following are the currently selected **brand palette targets**, sourced from the brand-book direction, not sampled pixel-perfect colors from the generated master:
 
-| Role | Token | HEX | Use |
-|---|---|---|---|
-| Accent | `brand-acid` | `#C5F500` | Brand treatments, selected states, key actions when contrast passes |
-| Carbon | `brand-carbon` | `#181D1B` | Primary dark background/lettering |
-| Off-white | `brand-offwhite` | `#F6F6F4` | Light backgrounds and text on dark surfaces |
-| Graphite | `brand-graphite` | `#343B35` | Secondary dark surfaces/borders |
+| Role      | Token            | HEX       | Use                                                                 |
+| --------- | ---------------- | --------- | ------------------------------------------------------------------- |
+| Accent    | `brand-acid`     | `#C5F500` | Brand treatments, selected states, key actions when contrast passes |
+| Carbon    | `brand-carbon`   | `#181D1B` | Primary dark background/lettering                                   |
+| Off-white | `brand-offwhite` | `#F6F6F4` | Light backgrounds and text on dark surfaces                         |
+| Graphite  | `brand-graphite` | `#343B35` | Secondary dark surfaces/borders                                     |
 
 **Accessibility:** These are brand primitives, not universal semantic tokens. Codex must derive verified foreground/background, hover, focus, muted, success, warning and error tokens in light and dark mode, test WCAG contrast, and avoid using Acid Green as readable text on white. Do not use only color to communicate workout status or sync state.
 
@@ -75,6 +75,7 @@ The following are the currently selected **brand palette targets**, sourced from
 **Approved:** The exported `PRGRS_Approved_Bold_PR_01.png` master and its same-artwork raster derivatives in `public/icons/`. Maintain proportions, letter shapes and colors; do not crop into the actual PR lettering. Existing master includes a dark backdrop around the rounded green icon; it is the visual source, not necessarily a final platform-safe maskable icon.
 
 **Recommended application formats (not separately approved logo designs):**
+
 - **App icon:** Original PR mark inside the Acid Green rounded square, suitable for home-screen, launch/splash and favicon. Use provided derived PNGs as temporary working assets, and audit platform safe areas.
 - **Primary brand lockup:** PR app icon alongside the literal name `PRGRS` for marketing/auth surfaces. The accompanying typography is a proposed layout, not a separately approved wordmark file.
 - **Wordmark-only:** Text `PRGRS` in a bold legible font in narrow headers. Do not substitute an invented decorative PR mark.

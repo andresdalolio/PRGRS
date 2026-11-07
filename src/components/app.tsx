@@ -22,8 +22,15 @@ import {
   WifiOff,
   X,
 } from 'lucide-react';
-import { configured, supabase, unwrap } from '@/lib/supabase';
-import { clearAccount, db, mergeRemote, resolveConflict, type Identity } from '@/lib/db';
+import { configured, supabase, unwrap, signOutDevice } from '@/lib/supabase';
+import {
+  clearAccount,
+  discardAccount,
+  db,
+  mergeRemote,
+  resolveConflict,
+  type Identity,
+} from '@/lib/db';
 import { fetchSessions, sendMutation } from '@/lib/remote';
 import { synchronized } from '@/lib/sync';
 import {
@@ -33,6 +40,7 @@ import {
   shiftDate,
   todayInZone,
   weekStart,
+  statusLabel,
   type WorkoutSession,
 } from '@/lib/domain';
 import { Brand, Empty, Meter, Modal, Notice, SessionCard } from './ui';
@@ -61,6 +69,7 @@ function Application() {
     [error, setError] = useState(''),
     [online, setOnline] = useState(true),
     [syncing, setSyncing] = useState(false),
+    [syncError, setSyncError] = useState(''),
     [tab, setTab] = useState<Tab>('home'),
     [workout, setWorkout] = useState<string | null>(null),
     [menu, setMenu] = useState(false),
@@ -80,9 +89,11 @@ function Application() {
       await synchronized(db(), identity.id, sendMutation);
       const remote = await fetchSessions();
       await mergeRemote(db(), identity.id, remote, true);
-      setError('');
+      setSyncError('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to synchronize. Local edits are saved.');
+      setSyncError(
+        e instanceof Error ? e.message : 'Unable to synchronize. Local edits are saved.',
+      );
     } finally {
       setSyncing(false);
     }
@@ -130,7 +141,7 @@ function Application() {
         if (!session) return;
         if (cached && cached.id !== session.user.id) {
           if (await db().outbox.count()) {
-            await supabase().auth.signOut({ scope: 'local' });
+            await signOutDevice();
             throw new Error(
               'Unsynced work belongs to a different account. Sign in with that account first.',
             );
@@ -223,8 +234,7 @@ function Application() {
         return;
       }
       if (configured()) {
-        const { error } = await supabase().auth.signOut({ scope: 'local' });
-        if (error) throw error;
+        await signOutDevice();
       }
       await clearAccount(db(), true);
       queryClient.clear();
@@ -338,7 +348,7 @@ function Application() {
           </span>
           <div className="row">
             <span
-              className={`sync-indicator ${!online ? 'offline' : pending.some((m) => m.error) ? 'error' : pending.length || syncing ? 'pending' : 'saved'}`}
+              className={`sync-indicator ${!online ? 'offline' : syncError || pending.some((m) => m.error) ? 'error' : pending.length || syncing ? 'pending' : 'saved'}`}
               role="status"
             >
               {!online ? (
@@ -350,7 +360,7 @@ function Application() {
               )}
               {!online
                 ? 'Offline · saved on device'
-                : pending.some((m) => m.error)
+                : syncError || pending.some((m) => m.error)
                   ? 'Sync needs attention'
                   : pending.length
                     ? `${pending.length} pending`
@@ -368,6 +378,7 @@ function Application() {
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>
+          {syncError && <Notice error>{syncError}</Notice>}
           {error && (
             <Notice error>
               <span>{error}</span>
@@ -387,6 +398,7 @@ function Application() {
           {workout ? (
             selected ? (
               <Workout
+                key={selected.id}
                 session={selected}
                 sessions={own}
                 ownerId={identity.id}
@@ -442,7 +454,12 @@ function Application() {
       </div>
       <nav className="mobile-nav" aria-label="Mobile navigation">
         {nav.map(({ id, label, icon: Icon }) => (
-          <a key={id} href={`#tab=${id}`} className={tab === id ? 'active' : ''}>
+          <a
+            key={id}
+            href={`#tab=${id}`}
+            className={tab === id ? 'active' : ''}
+            aria-current={tab === id ? 'page' : undefined}
+          >
             <Icon size={22} />
             <span>{label}</span>
           </a>
@@ -675,7 +692,10 @@ function Dashboard({
                   {completion([active]).percent !== null ? '%' : ''}
                 </strong>
               </div>
-              <Meter value={completion([active]).percent} label="Today’s exercise completion" />
+              <Meter
+                value={completion([active]).percent}
+                label="Featured workout exercise completion"
+              />
               <button className="button dark full" onClick={() => onOpen(active.id)}>
                 {active.status === 'finished'
                   ? 'Review workout'
@@ -815,6 +835,9 @@ function Calendar({
       : view === 'week'
         ? 7
         : new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)), 0).getDate();
+  const range = sessions.filter((s) => s.date >= start && s.date <= shiftDate(start, count - 1)),
+    c = completion(range),
+    a = adherence(range, today);
   function move(direction: number) {
     if (view === 'month') {
       const d = new Date(date + 'T12:00:00Z');
@@ -867,6 +890,12 @@ function Calendar({
             </button>
           </div>
         </div>
+        <p className="small-note" aria-live="polite">
+          {view[0].toUpperCase() + view.slice(1)} exercise completion:{' '}
+          {c.percent === null ? 'N/A' : `${c.percent}%`} · {c.completed}/{c.total} exercises.{' '}
+          Workout adherence: {a.percent === null ? 'N/A' : `${a.percent}%`} · {a.finished}/{a.due}{' '}
+          due sessions finished.
+        </p>
         <div className={view === 'month' ? 'month-grid' : 'calendar-list'}>
           {view === 'month' &&
             ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
@@ -904,14 +933,18 @@ function Calendar({
                           onClick={() => onOpen(s.id)}
                         >
                           <span className="status-dot" />
-                          {s.title}
+                          <span>
+                            {s.title}
+                            <br />
+                            {statusLabel(s, today)}
+                          </span>
                         </button>
                       ) : (
                         <SessionCard key={s.id} session={s} today={today} onOpen={onOpen} />
                       ),
                     )
                   ) : (
-                    <span className="rest-label">Rest day</span>
+                    <span className="rest-label">No sessions</span>
                   )}
                 </div>
               </div>
@@ -1164,6 +1197,11 @@ function Profile({
             </button>
             {pending.length > 0 && (
               <>
+                {Array.from(new Set(pending.map((m) => m.error).filter(Boolean))).map((message) => (
+                  <Notice error key={message}>
+                    {message}
+                  </Notice>
+                ))}
                 <button className="button secondary" onClick={exportData}>
                   Export pending edits
                 </button>
@@ -1185,9 +1223,22 @@ function Profile({
                           'Permanently discard unsynced workout edits and sign out on this device?',
                         )
                       ) {
-                        await clearAccount(db(), true);
-                        if (configured()) await supabase().auth.signOut({ scope: 'local' });
-                        location.reload();
+                        try {
+                          await discardAccount(
+                            db(),
+                            identity.id,
+                            pending.map((m) => m.id),
+                          );
+                          queryClient.clear();
+                          if (configured()) {
+                            await signOutDevice();
+                          }
+                          location.reload();
+                        } catch (e) {
+                          onError(
+                            e instanceof Error ? e.message : 'Unable to discard and sign out.',
+                          );
+                        }
                       }
                     }}
                   >
@@ -1310,9 +1361,20 @@ function Profile({
             <button
               className="button primary"
               onClick={async () => {
-                await resolveConflict(db(), identity.id, conflict.remote, 'local');
-                setConflict(null);
-                void onSync();
+                try {
+                  await resolveConflict(
+                    db(),
+                    identity.id,
+                    conflict.remote,
+                    'local',
+                    conflict.local.version,
+                  );
+                  setConflict(null);
+                  void onSync();
+                } catch (e) {
+                  setConflict(null);
+                  onError(e instanceof Error ? e.message : 'Unable to resolve conflict.');
+                }
               }}
             >
               Keep this device’s edits and sync
@@ -1323,8 +1385,19 @@ function Profile({
                 if (
                   window.confirm('Replace this device’s pending edits with the server version?')
                 ) {
-                  await resolveConflict(db(), identity.id, conflict.remote, 'remote');
-                  setConflict(null);
+                  try {
+                    await resolveConflict(
+                      db(),
+                      identity.id,
+                      conflict.remote,
+                      'remote',
+                      conflict.local.version,
+                    );
+                    setConflict(null);
+                  } catch (e) {
+                    setConflict(null);
+                    onError(e instanceof Error ? e.message : 'Unable to resolve conflict.');
+                  }
                 }
               }}
             >

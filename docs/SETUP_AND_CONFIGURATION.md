@@ -50,7 +50,7 @@ supabase db push --dry-run
 supabase db push
 ```
 
-Review the target project and dry-run before pushing. The initial migration is designed for a new dedicated project. `db push` records migration history; do not paste/reapply the initial CREATE statements on each run. The alternative for a new development project is to execute each migration in filename order once through Supabase SQL Editor. Do not mix SQL Editor application and CLI migrations without reconciling migration history.
+Review the target project and dry-run before pushing. Apply all migrations, including the additive exercise-permission and workout-detail migrations, before using this application version. The initial migration is designed for a new dedicated project. `db push` records migration history; do not paste/reapply the initial CREATE statements on each run. The alternative for a new development project is to execute each migration in filename order once through Supabase SQL Editor. Do not mix SQL Editor application and CLI migrations without reconciling migration history.
 
 No database reset is needed. Never run `supabase db reset --linked` on real data.
 
@@ -150,7 +150,7 @@ supabase status
 
 `db reset` is for the **disposable local stack only**: it rebuilds it and applies migrations. Copy the local API URL and local public/anon key from `supabase status` into `.env.local`, then restart Next. Local Studio defaults to <http://localhost:54323>; local mail capture defaults to <http://localhost:54324>. The actual status output is authoritative. The configured local email provider does not require confirmation; hosted settings should require it.
 
-`supabase test db` runs pgTAP schema checks. `npm run db:test` works independently of Docker using PGlite. Docker and Supabase CLI were unavailable during implementation, so the full local stack startup/config has not been verified here. New CLI versions may change config; compare with the CLI's generated defaults if an option is rejected, keeping our port/auth settings and migrations.
+`supabase test db` runs pgTAP schema checks. `npm run db:test` works independently of Docker using PGlite. On 2026-11-07, the running local stack was verified, its two pending additive migrations were applied with `npx supabase migration up`, and all 8 pgTAP checks passed using `npx supabase test db --network-id supabase_network_PRGRS`. The network flag resolves the test runner's `db` hostname on this stack; use your database container's network if named differently. No reset or hosted changes were performed. Auth/PostgREST user workflows still require the connectivity checks above. New CLI versions may change config; compare with the CLI's generated defaults if an option is rejected, keeping our port/auth settings and migrations.
 
 ### Automated checks
 

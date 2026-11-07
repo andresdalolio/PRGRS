@@ -447,6 +447,9 @@ export type Database = {
           finished_at: string | null;
           version: number;
           updated_at: string;
+          description: string;
+          category: string;
+          estimated_minutes: number | null;
         };
         Insert: {
           id?: string;
@@ -459,6 +462,9 @@ export type Database = {
           finished_at?: string | null;
           version?: number;
           updated_at?: string;
+          description?: string;
+          category?: string;
+          estimated_minutes?: number | null;
         };
         Update: {
           id?: string;
@@ -471,6 +477,9 @@ export type Database = {
           finished_at?: string | null;
           version?: number;
           updated_at?: string;
+          description?: string;
+          category?: string;
+          estimated_minutes?: number | null;
         };
         Relationships: [
           {
@@ -497,9 +506,36 @@ export type Database = {
         ];
       };
       workout_templates: {
-        Row: { id: string; week_id: string; day: number; position: number; title: string };
-        Insert: { id?: string; week_id: string; day: number; position: number; title: string };
-        Update: { id?: string; week_id?: string; day?: number; position?: number; title?: string };
+        Row: {
+          id: string;
+          week_id: string;
+          day: number;
+          position: number;
+          title: string;
+          description: string;
+          category: string;
+          estimated_minutes: number | null;
+        };
+        Insert: {
+          id?: string;
+          week_id: string;
+          day: number;
+          position: number;
+          title: string;
+          description?: string;
+          category?: string;
+          estimated_minutes?: number | null;
+        };
+        Update: {
+          id?: string;
+          week_id?: string;
+          day?: number;
+          position?: number;
+          title?: string;
+          description?: string;
+          category?: string;
+          estimated_minutes?: number | null;
+        };
         Relationships: [
           {
             foreignKeyName: 'workout_templates_week_id_fkey';

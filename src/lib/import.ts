@@ -61,6 +61,9 @@ export const workoutSchema = z
   .object({
     day: z.number().int().min(1).max(7),
     title: z.string().trim().min(1).max(160),
+    description: text.optional(),
+    category: z.string().trim().max(80).optional(),
+    estimatedMinutes: z.number().int().min(1).max(1440).optional(),
     blocks: z.array(blockSchema).min(1).max(30),
   })
   .strict();
@@ -126,6 +129,8 @@ export function blankProgram(): ProgramInput {
           {
             day: 1,
             title: 'Full body',
+            description: '',
+            category: '',
             blocks: [
               {
                 label: 'A',

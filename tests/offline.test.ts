@@ -5,6 +5,7 @@ import {
   mergeRemote,
   resolveConflict,
   clearAccount,
+  discardAccount,
 } from '../src/lib/db';
 import { synchronized } from '../src/lib/sync';
 import { fixture } from './fixtures/session';
@@ -89,6 +90,47 @@ describe('durable workout outbox', () => {
     expect((await d.sessions.get(s.id))?.version).toBe(0);
     expect(await d.outbox.count()).toBe(0);
   });
+  it('rolls back the session edit if the outbox write fails', async () => {
+    const d = database(),
+      s = fixture();
+    await d.sessions.add(s);
+    d.outbox.hook('creating', () => {
+      throw new Error('Outbox storage failed');
+    });
+    await expect(
+      editSession(d, 'athlete', s.id, (s) => {
+        s.blocks[0].entries[0].load = '24 kg';
+      }),
+    ).rejects.toThrow('Outbox storage failed');
+    expect((await d.sessions.get(s.id))?.version).toBe(0);
+    expect((await d.sessions.get(s.id))?.blocks[0].entries[0].load).toBe('');
+    expect(await d.outbox.count()).toBe(0);
+  });
+  it('preserves edits and mutation identity across authentication expiry and database reopen', async () => {
+    const d = database(),
+      s = fixture();
+    await d.sessions.add(s);
+    await editSession(d, 'athlete', s.id, (s) => {
+      s.blocks[0].entries[0].notes = 'Keep through reauthentication';
+    });
+    const mutation = (await d.outbox.toArray())[0];
+    await synchronized(d, 'athlete', async () => {
+      throw new Error('JWT expired');
+    });
+    d.close();
+    await d.open();
+    await mergeRemote(d, 'athlete', [s]);
+    expect((await d.sessions.get(s.id))?.blocks[0].entries[0].notes).toBe(
+      'Keep through reauthentication',
+    );
+    expect((await d.outbox.get(mutation.id))?.error).toBe('JWT expired');
+    const ids: string[] = [];
+    await synchronized(d, 'athlete', async (m) => {
+      ids.push(m.id);
+    });
+    expect(ids).toEqual([mutation.id]);
+    expect(await d.outbox.count()).toBe(0);
+  });
   it('retries the same logical ID after an acknowledgement is lost', async () => {
     const d = database(),
       s = fixture();
@@ -152,7 +194,7 @@ describe('durable workout outbox', () => {
       throw new Error('Should not retry unresolved conflict');
     });
     expect((await d.outbox.toArray())[0].attempts).toBe(1);
-    await resolveConflict(d, 'athlete', { ...s, version: 5 }, 'local');
+    await resolveConflict(d, 'athlete', { ...s, version: 5 }, 'local', 1);
     const queue = await d.outbox.toArray();
     expect(queue).toHaveLength(1);
     expect(queue[0].baseVersion).toBe(5);
@@ -171,4 +213,50 @@ describe('durable workout outbox', () => {
     await Promise.all([synchronized(d, 'athlete', send), synchronized(d, 'athlete', send)]);
     expect(calls).toBe(1);
   });
+  it('explicit discard clears reviewed pending work and private cache', async () => {
+    const d = database(),
+      s = fixture();
+    await d.sessions.add(s);
+    await editSession(d, 'athlete', s.id, (s) => {
+      s.blocks[0].entries[0].notes = 'Reviewed';
+    });
+    await discardAccount(
+      d,
+      'athlete',
+      (await d.outbox.toArray()).map((m) => m.id),
+    );
+    expect(await d.sessions.count()).toBe(0);
+    expect(await d.outbox.count()).toBe(0);
+  });
+  it('discard preserves work queued in another tab after the confirmation was prepared', async () => {
+    const d = database(),
+      s = fixture();
+    await d.sessions.add(s);
+    const reviewed: string[] = [];
+    await editSession(d, 'athlete', s.id, (s) => {
+      s.blocks[0].entries[0].notes = 'New work';
+    });
+    await expect(discardAccount(d, 'athlete', reviewed)).rejects.toThrow('Local work changed');
+    expect(await d.outbox.count()).toBe(1);
+    expect((await d.sessions.get(s.id))?.blocks[0].entries[0].notes).toBe('New work');
+  });
+  for (const choice of ['local', 'remote'] as const) {
+    it(`rejects stale ${choice} conflict choices without losing newer edits`, async () => {
+      const d = database(),
+        s = fixture();
+      await d.sessions.add(s);
+      await editSession(d, 'athlete', s.id, (s) => {
+        s.blocks[0].entries[0].load = '24 kg';
+      });
+      const reviewed = (await d.sessions.get(s.id))!;
+      await editSession(d, 'athlete', s.id, (s) => {
+        s.blocks[0].entries[0].load = '32 kg';
+      });
+      await expect(
+        resolveConflict(d, 'athlete', { ...s, version: 5 }, choice, reviewed.version),
+      ).rejects.toThrow('changed since review');
+      expect(await d.outbox.count()).toBe(2);
+      expect((await d.sessions.get(s.id))?.blocks[0].entries[0].load).toBe('32 kg');
+    });
+  }
 });

@@ -4,7 +4,7 @@
 
 Track the work. See the growth.
 
-A mobile-first training PWA for athletes and coaches. Create/import programs, assign training, log actual work offline, and see real training history. One account can hold both capabilities. Finishing a session never checks the remaining exercises.
+A mobile-first training PWA for athletes and coaches. Create/import programs, assign training, log actual work offline, and see real training history. One account can hold both capabilities. Finishing a session never checks the remaining exercises. Workout descriptions, categories and estimated durations stay with the assigned historical snapshot.
 
 The name is incomplete by design. Because progress never ends.
 
