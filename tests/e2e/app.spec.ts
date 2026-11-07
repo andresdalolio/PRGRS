@@ -278,10 +278,7 @@ test('calendar views, theme persistence, accessible layouts and history referenc
       (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
         .violations,
     ).toEqual([]);
-    await expect(page.getByRole('link', { name: 'Reference', exact: true })).toHaveAttribute(
-      'href',
-      /youtube/,
-    );
+    await expect(page.getByRole('link', { name: /Reference/ })).toHaveAttribute('href', /youtube/);
     await page.screenshot({
       path: `test-results/workout-${test.info().project.name}.png`,
       fullPage: true,
@@ -609,6 +606,65 @@ test('aggregates multiple daily workouts, excludes instructions and shows stable
       ),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /Future training/ })).toContainText('scheduled');
+  } finally {
+    await server.close();
+  }
+});
+
+test('Trainer v2 preview, assignment and workout preserve rich targets and group protocols', async ({
+  page,
+}) => {
+  const server = await backend();
+  try {
+    await page.goto('/');
+    await page.getByLabel('Email', { exact: true }).fill('alex@example.com');
+    await page.getByLabel('Password', { exact: true }).fill('test-password');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Let’s get to work, Alex.' })).toBeVisible();
+    await page.evaluate(() => {
+      location.hash = 'tab=coach';
+    });
+    await page.getByRole('button', { name: 'Import JSON', exact: true }).click();
+    const raw = await readFile('docs/integration/trainer-example.json', 'utf8');
+    const invalid = JSON.parse(raw);
+    invalid.weeks[0].workouts[0].blocks[1].entries[0].prescription.percentage = { value: 70 };
+    await page
+      .getByRole('textbox', { name: 'Program JSON', exact: true })
+      .fill(JSON.stringify(invalid));
+    await page.getByRole('button', { name: 'Validate & preview' }).click();
+    await expect(page.getByText(/percentage.reference:/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm import & save' })).toHaveCount(0);
+    await page.getByRole('textbox', { name: 'Program JSON', exact: true }).fill(raw);
+    await page.getByRole('button', { name: 'Validate & preview' }).click();
+    await expect(page.getByText('Valid schema v2')).toBeVisible();
+    await expect(page.getByText(/Set 3 \(work\): 3 reps · Target RPE 8/)).toBeVisible();
+    await expect(page.getByRole('link', { name: /Reference/ })).toHaveAttribute(
+      'href',
+      /tiktok.com\/search/,
+    );
+    await page.getByRole('button', { name: 'Confirm import & save' }).click();
+    await expect(page.getByText('Program saved. Ready to assign.')).toBeVisible();
+    await page.getByRole('button', { name: 'Assign program', exact: true }).click();
+    await page.getByLabel('Day 1 date').fill(today());
+    await page.getByRole('button', { name: 'Confirm assignment' }).click();
+    await expect(
+      page.getByText('Program assigned. Training is ready in the athlete’s calendar.'),
+    ).toBeVisible();
+    await page.reload();
+    await page.evaluate(() => {
+      location.hash = 'tab=home';
+    });
+    await page.getByRole('button', { name: 'Open workout', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Strength priority.' })).toBeVisible();
+    await expect(page.getByText(/Set 3 \(work\): 3 reps · Target RPE 8/)).toBeVisible();
+    await expect(page.getByText(/70% of tested 1RM/)).toBeVisible();
+    await expect(
+      page.getByText(
+        '3 rounds: B1 then B2; rest 20 sec between exercises and 90 sec after each round.',
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole('checkbox')).toHaveCount(3);
+    await expect(page.getByLabel('Actual load · A', { exact: true })).toHaveValue('');
   } finally {
     await server.close();
   }

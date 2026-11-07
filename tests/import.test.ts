@@ -22,7 +22,7 @@ describe('program import', () => {
   });
   it('rejects unsupported versions and unknown fields', () => {
     const data = JSON.parse(valid);
-    expect(programSchema.safeParse({ ...data, schemaVersion: 2 }).success).toBe(false);
+    expect(programSchema.safeParse({ ...data, schemaVersion: 3 }).success).toBe(false);
     expect(programSchema.safeParse({ ...data, secret: 'unexpected' }).success).toBe(false);
   });
   it('rejects duplicate weeks', () => {

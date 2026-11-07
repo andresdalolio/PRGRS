@@ -10,18 +10,7 @@ export type BlockKind =
   | 'warmup'
   | 'cooldown'
   | 'instruction';
-export type Prescription = {
-  sets?: number;
-  reps?: string;
-  load?: string;
-  duration?: string;
-  distance?: string;
-  calories?: number;
-  rounds?: number;
-  tempo?: string;
-  rest?: string;
-  text?: string;
-};
+export type Prescription = import('zod').infer<typeof import('./import').prescriptionSchema>;
 export type Entry = {
   id: string;
   exerciseId: string | null;
@@ -56,6 +45,14 @@ export type WorkoutSession = {
   version: number;
   blocks: Block[];
   updatedAt: string;
+  position?: number;
+  provenance?: {
+    programId: string;
+    name: string;
+    description: string;
+    version: number;
+    schemaVersion: number;
+  } | null;
 };
 export type SessionLog = {
   status: SessionStatus;
@@ -154,7 +151,7 @@ export function safeUrl(url: string | null | undefined) {
     return null;
   }
 }
-export function prescriptionText(p: Prescription) {
+export function prescriptionText(p: Prescription): string {
   return [
     p.sets ? `${p.sets} sets` : null,
     p.reps ? `${p.reps} reps` : null,
@@ -166,7 +163,26 @@ export function prescriptionText(p: Prescription) {
     p.tempo ? `Tempo ${p.tempo}` : null,
     p.rest ? `Rest ${p.rest}` : null,
     p.text,
+    p.targetRpe !== undefined ? `Target RPE ${p.targetRpe}` : null,
+    p.targetRir !== undefined ? `Target RIR ${p.targetRir}` : null,
+    p.percentage ? `${p.percentage.value}% of ${p.percentage.reference}` : null,
+    p.side?.replaceAll('_', ' '),
+    p.pace ? `Pace ${p.pace}` : null,
+    p.zone ? `Zone ${p.zone}` : null,
+    p.progression ? `Progression: ${p.progression}` : null,
+    p.stop ? `Stop: ${p.stop}` : null,
+    p.alternatives ? `Alternatives: ${p.alternatives}` : null,
+    p.setDetails?.map((s, i) => `Set ${i + 1} (${s.kind}): ${prescriptionText(s)}`).join(' · '),
   ]
     .filter(Boolean)
     .join(' · ');
+}
+
+export function compareSessionOrder(a: WorkoutSession, b: WorkoutSession) {
+  return (
+    a.date.localeCompare(b.date) ||
+    (a.assignmentId ?? '').localeCompare(b.assignmentId ?? '') ||
+    (a.position ?? 0) - (b.position ?? 0) ||
+    a.id.localeCompare(b.id)
+  );
 }

@@ -27,6 +27,17 @@ export const sessionSchema: z.ZodType<WorkoutSession> = z.object({
   finishedAt: z.string().nullable(),
   version: z.number().int().min(0),
   updatedAt: z.string(),
+  position: z.number().int().min(0).optional(),
+  provenance: z
+    .object({
+      programId: z.string().uuid(),
+      name: z.string(),
+      description: z.string(),
+      version: z.number().int().min(1),
+      schemaVersion: z.number().int().min(1).max(2),
+    })
+    .nullable()
+    .optional(),
   blocks: z.array(
     z.object({
       id: z.string().uuid(),

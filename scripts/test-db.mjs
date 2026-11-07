@@ -58,7 +58,7 @@ try {
         weeks: [{ week: 1, workouts: [{ day: 9, title: 'Bad', blocks: [] }] }],
       }),
     ],
-    /Invalid workout/,
+    /workouts.0.day/,
     'Server independently rejects invalid import',
   );
   const { id: assignment } = (
@@ -131,7 +131,7 @@ try {
   await fails(
     'select public.save_program($1::jsonb)',
     [JSON.stringify(malformed)],
-    /Invalid workout duration/,
+    /estimatedMinutes/,
     'Server independently validates optional workout details',
   );
   const log = {

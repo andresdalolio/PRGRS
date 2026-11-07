@@ -179,6 +179,7 @@ export type Database = {
           version: number;
           created_at: string;
           updated_at: string;
+          contract_version: number;
         };
         Insert: {
           id?: string;
@@ -189,6 +190,7 @@ export type Database = {
           version?: number;
           created_at?: string;
           updated_at?: string;
+          contract_version?: number;
         };
         Update: {
           id?: string;
@@ -199,6 +201,7 @@ export type Database = {
           version?: number;
           created_at?: string;
           updated_at?: string;
+          contract_version?: number;
         };
         Relationships: [
           {
@@ -451,6 +454,8 @@ export type Database = {
           category: string;
           estimated_minutes: number | null;
           withdrawn_at: string | null;
+          position: number;
+          provenance: Json | null;
         };
         Insert: {
           id?: string;
@@ -467,6 +472,8 @@ export type Database = {
           category?: string;
           estimated_minutes?: number | null;
           withdrawn_at?: string | null;
+          position?: number;
+          provenance?: Json | null;
         };
         Update: {
           id?: string;
@@ -483,6 +490,8 @@ export type Database = {
           category?: string;
           estimated_minutes?: number | null;
           withdrawn_at?: string | null;
+          position?: number;
+          provenance?: Json | null;
         };
         Relationships: [
           {
@@ -561,6 +570,7 @@ export type Database = {
         Returns: string;
       };
       can_read_athlete: { Args: { p_athlete: string }; Returns: boolean };
+      check_training_shape: { Args: { v: Json; spec: Json; path: string }; Returns: null };
       get_my_sessions: { Args: Record<string, never>; Returns: Json };
       get_program: { Args: { p_id: string }; Returns: Json };
       has_role: { Args: { p_role: string }; Returns: boolean };

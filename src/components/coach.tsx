@@ -15,7 +15,13 @@ import {
   Users,
 } from 'lucide-react';
 import { supabase, unwrap } from '@/lib/supabase';
-import { blankProgram, parseProgram, programSchema, type ProgramInput } from '@/lib/import';
+import {
+  blankProgram,
+  parseProgram,
+  programSchema,
+  resolveProgramExercises,
+  type ProgramInput,
+} from '@/lib/import';
 import {
   adherence,
   completion,
@@ -64,6 +70,7 @@ export default function Coach({
     [draft, setDraft] = useState<ProgramInput>(blankProgram()),
     [raw, setRaw] = useState(''),
     [replace, setReplace] = useState<string | null>(null),
+    [metadataConflicts, setMetadataConflicts] = useState<string[]>([]),
     [preview, setPreview] = useState<ProgramInput | null>(null),
     [assign, setAssign] = useState<Program | null>(null),
     [remove, setRemove] = useState<Program | null>(null),
@@ -139,9 +146,14 @@ export default function Coach({
     });
   }
   function validate() {
+    setPreview(null);
     try {
       const parsed = mode === 'json' ? parseProgram(raw) : programSchema.parse(draft);
-      setPreview(parsed);
+      if (!exercisesQuery.isSuccess)
+        throw new Error('Load the exercise library before previewing.');
+      const resolved = resolveProgramExercises(parsed, exercises);
+      setMetadataConflicts(resolved.conflicts);
+      setPreview(resolved.program);
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invalid program');
@@ -150,7 +162,15 @@ export default function Coach({
   async function persist() {
     if (!preview) return;
     await action(async () => {
-      unwrap(await supabase().rpc('save_program', { p_program: preview, p_replace: replace }));
+      const saved = await supabase().rpc('save_program', {
+        p_program: preview,
+        p_replace: replace,
+      });
+      if (saved.error) {
+        setPreview(null);
+        await queryClient.invalidateQueries({ queryKey: ['exercises'] });
+      }
+      unwrap(saved);
       await queryClient.invalidateQueries({ queryKey: ['programs'] });
       await queryClient.invalidateQueries({ queryKey: ['exercises'] });
       setEditor(false);
@@ -350,9 +370,15 @@ export default function Coach({
                 <div className="import-preview">
                   <div className="row between">
                     <h2>{preview.name}</h2>
-                    <span className="badge success">Valid schema v1</span>
+                    <span className="badge success">Valid schema v{preview.schemaVersion}</span>
                   </div>
                   <p>{preview.description}</p>
+                  {metadataConflicts.length > 0 && (
+                    <Notice>
+                      Existing library metadata is used for: {metadataConflicts.join(', ')}. Review
+                      the effective names and references below before saving.
+                    </Notice>
+                  )}
                   {preview.weeks.map((w) => (
                     <div key={w.week}>
                       <h3>Week {w.week}</h3>
@@ -380,6 +406,20 @@ export default function Coach({
                                 <p key={k}>
                                   {e.label} {e.name} · {prescriptionText(e.prescription)}
                                   {!e.eligible ? ' · reference only' : ''}
+                                  {e.instructions && <span> · {e.instructions}</span>}
+                                  {e.aliases.length > 0 && (
+                                    <span> · Aliases: {e.aliases.join(', ')}</span>
+                                  )}
+                                  {safeUrl(e.referenceUrl) && (
+                                    <a
+                                      href={safeUrl(e.referenceUrl)!}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      {' '}
+                                      · Reference
+                                    </a>
+                                  )}
                                 </p>
                               ))}
                             </div>

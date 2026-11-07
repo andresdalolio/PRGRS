@@ -12,7 +12,7 @@
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:test": "node scripts/test-db.mjs",
+    "db:test": "node scripts/test-db.mjs && node scripts/test-training-import.mjs",
     "test:integration": "node scripts/test-local-supabase.mjs",
     "schema:generate": "node scripts/generate-schema.mjs",
     "db:types": "node scripts/generate-db-types.mjs"

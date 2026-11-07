@@ -1,4 +1,5 @@
 'use client';
+import { compareSessionOrder } from '@/lib/domain';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -84,7 +85,14 @@ function Application() {
         : message,
     );
   }, []);
-  const sessions = useLiveQuery(() => db().sessions.toArray(), [], []),
+  const sessions = useLiveQuery(
+      () =>
+        db()
+          .sessions.toArray()
+          .then((items) => items.sort(compareSessionOrder)),
+      [],
+      [],
+    ),
     outbox = useLiveQuery(() => db().outbox.toArray(), [], []);
   const today = todayInZone(identity?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
   const own = sessions.filter((s) => s.athleteId === identity?.id),

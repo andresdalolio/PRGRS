@@ -1,5 +1,7 @@
 # Program import v1
 
+For Trainer v2 prescriptions, see the [training contract](integration/PRGRS_TRAINING_CONTRACT.md), [Trainer export guide](integration/PRGRS_TRAINER_EXPORT_GUIDE.md), and [import guide](integration/PRGRS_IMPORT_GUIDE.md). The downloadable schema now accepts both versions.
+
 Use Coach studio → Import JSON. Paste or upload a UTF-8 `.json` file below 2 MB, validate, review the preview, then explicitly confirm import. Assignment is a separate explicit step. The builder writes the same format and also previews before saving.
 
 - [Realistic valid example](examples/foundation.json)

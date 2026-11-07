@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 2,
+  "name": "Trainer interchange example",
+  "description": "Serialization example only. Main objective and success criterion: supplied by Trainer; secondary objectives in priority order.",
+  "weeks": [
+    {
+      "week": 1,
+      "workouts": [
+        {
+          "day": 1,
+          "title": "Strength priority",
+          "description": "Strength first; easy aerobic session afterward. Trainer supplies intended stimulus and any reduction.",
+          "category": "Strength",
+          "estimatedMinutes": 45,
+          "blocks": [
+            {
+              "label": "Info",
+              "kind": "instruction",
+              "instructions": "Check readiness and follow Trainer stop guidance.",
+              "entries": []
+            },
+            {
+              "label": "A",
+              "kind": "single",
+              "instructions": "Entry targets are defaults; individual set targets override them.",
+              "entries": [
+                {
+                  "exerciseKey": "barbell-bench-press-paused",
+                  "name": "Paused barbell bench press",
+                  "label": "A",
+                  "referenceUrl": "https://www.tiktok.com/search?q=paused%20barbell%20bench%20press",
+                  "prescription": {
+                    "rest": "2\u20133 min",
+                    "targetRpe": 7,
+                    "percentage": {
+                      "value": 70,
+                      "reference": "tested 1RM; use only a valid comparable reference"
+                    },
+                    "progression": "Trainer reviews reps, effort and stable technique before changing load.",
+                    "stop": "Stop if technique degrades or discomfort appears.",
+                    "alternatives": "Trainer-approved machine press if equipment unavailable; recalibrate load for the different implement.",
+                    "setDetails": [
+                      {
+                        "kind": "warmup",
+                        "reps": "5",
+                        "load": "Calibrate; no invented kg",
+                        "targetRpe": 3
+                      },
+                      {
+                        "kind": "work",
+                        "reps": "5"
+                      },
+                      {
+                        "kind": "work",
+                        "reps": "3",
+                        "targetRpe": 8
+                      }
+                    ]
+                  },
+                  "instructions": "Maintain the prescribed pause; do not transfer loads from another variant."
+                }
+              ]
+            },
+            {
+              "label": "B",
+              "kind": "superset",
+              "instructions": "3 rounds: B1 then B2; rest 20 sec between exercises and 90 sec after each round.",
+              "entries": [
+                {
+                  "exerciseKey": "bodyweight-split-squat",
+                  "name": "Bodyweight split squat",
+                  "label": "B1",
+                  "prescription": {
+                    "reps": "8\u201310",
+                    "side": "per_side",
+                    "targetRir": 3
+                  }
+                },
+                {
+                  "exerciseKey": "side-plank",
+                  "name": "Side plank",
+                  "label": "B2",
+                  "prescription": {
+                    "duration": "20 sec",
+                    "side": "per_side"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day": 1,
+          "title": "Easy aerobic work",
+          "description": "Second session. Easy conversational effort; no uncalibrated pace or zone invented.",
+          "category": "Aerobic",
+          "blocks": [
+            {
+              "label": "C",
+              "kind": "single",
+              "entries": [
+                {
+                  "exerciseKey": "easy-running",
+                  "name": "Easy running",
+                  "label": "C",
+                  "prescription": {
+                    "duration": "20 min",
+                    "pace": "Conversational; no fixed pace reference",
+                    "targetRpe": 3
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day": 3,
+          "title": "Conditioning protocol example",
+          "category": "Conditioning",
+          "blocks": [
+            {
+              "label": "D",
+              "kind": "emom",
+              "instructions": "EMOM 8 min: odd minutes D1, even minutes D2. Rest the remainder of each minute.",
+              "entries": [
+                {
+                  "exerciseKey": "row-erg",
+                  "name": "Row erg",
+                  "label": "D1",
+                  "prescription": {
+                    "calories": 8
+                  }
+                },
+                {
+                  "exerciseKey": "bodyweight-squat",
+                  "name": "Bodyweight squat",
+                  "label": "D2",
+                  "prescription": {
+                    "reps": "8"
+                  }
+                }
+              ]
+            },
+            {
+              "label": "E",
+              "kind": "amrap",
+              "instructions": "6-minute AMRAP: repeat E1 then E2 in order. Self-paced transitions; rounds plus reps is the intended score.",
+              "entries": [
+                {
+                  "exerciseKey": "row-erg",
+                  "name": "Row erg",
+                  "label": "E1",
+                  "prescription": {
+                    "distance": "100 m"
+                  }
+                },
+                {
+                  "exerciseKey": "bodyweight-squat",
+                  "name": "Bodyweight squat",
+                  "label": "E2",
+                  "prescription": {
+                    "reps": "5"
+                  }
+                }
+              ]
+            },
+            {
+              "label": "F",
+              "kind": "for_time",
+              "instructions": "2 rounds of F1; rest 60 sec between rounds. For Time with an 8-minute cap.",
+              "entries": [
+                {
+                  "exerciseKey": "row-erg",
+                  "name": "Row erg",
+                  "label": "F1",
+                  "prescription": {
+                    "distance": "200 m"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
