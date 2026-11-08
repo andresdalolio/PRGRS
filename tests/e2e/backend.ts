@@ -147,6 +147,13 @@ export async function backend() {
               [args.p_program, args.p_athlete, args.p_start],
             )
           ).rows[0].result;
+        else if (name === 'apply_feedback_mutation')
+          data = (
+            await db.query<{ result: unknown }>(
+              'select public.apply_feedback_mutation($1,$2,$3,$4::jsonb) as result',
+              [args.p_id, args.p_item, args.p_base_version, JSON.stringify(args.p_value)],
+            )
+          ).rows[0].result;
         else if (name === 'apply_session_mutation')
           data = (
             await db.query<{ result: unknown }>(
@@ -164,6 +171,8 @@ export async function backend() {
             data = (await db.query('select role from public.user_roles')).rows;
           else if (table === 'programs')
             data = (await db.query('select * from public.programs order by created_at desc')).rows;
+          else if (table === 'feedback_items')
+            data = (await db.query('select * from public.feedback_items')).rows;
           else if (table === 'exercises')
             data = (await db.query('select * from public.exercises order by name')).rows;
           else if (table === 'coach_athletes') data = [];

@@ -34,6 +34,7 @@ export type Block = {
 export type WorkoutSession = {
   id: string;
   athleteId: string;
+  deleted?: boolean;
   assignmentId: string | null;
   date: string;
   title: string;
@@ -55,12 +56,14 @@ export type WorkoutSession = {
   } | null;
 };
 export type SessionLog = {
+  deleted?: boolean;
   status: SessionStatus;
   finishedAt: string | null;
   results: { entryId: string; completed: boolean; load: string; notes: string }[];
 };
 export function sessionLog(session: WorkoutSession): SessionLog {
   return {
+    ...(session.deleted ? { deleted: true } : {}),
     status: session.status,
     finishedAt: session.finishedAt,
     results: session.blocks.flatMap((b) =>
@@ -73,8 +76,22 @@ export function sessionLog(session: WorkoutSession): SessionLog {
     ),
   };
 }
+// Calendar, history and summaries share these session occurrences; never join templates into the calendar.
+export function visibleSessions(sessions: WorkoutSession[]) {
+  const unique = new Map<string, WorkoutSession>();
+  for (const session of sessions) {
+    const previous = unique.get(session.id);
+    if (
+      !previous ||
+      session.version > previous.version ||
+      (session.version === previous.version && session.deleted)
+    )
+      unique.set(session.id, session);
+  }
+  return [...unique.values()].filter((s) => !s.deleted);
+}
 export function completion(sessions: WorkoutSession[]) {
-  const entries = sessions
+  const entries = visibleSessions(sessions)
     .flatMap((s) => s.blocks.flatMap((b) => b.entries))
     .filter((e) => e.eligible);
   const total = entries.length;
@@ -82,7 +99,7 @@ export function completion(sessions: WorkoutSession[]) {
   return { total, completed, percent: total ? Math.round((completed / total) * 100) : null };
 }
 export function adherence(sessions: WorkoutSession[], today: string) {
-  const due = sessions.filter(
+  const due = visibleSessions(sessions).filter(
     (s) => s.date <= today && s.blocks.some((b) => b.entries.some((e) => e.eligible)),
   );
   const finished = due.filter((s) => s.status === 'finished').length;
@@ -103,19 +120,37 @@ export function statusLabel(s: WorkoutSession, today: string) {
   if (s.status === 'scheduled' && s.date < today) return 'Missed';
   return s.status.replace('_', ' ');
 }
-export function exerciseHistory(sessions: WorkoutSession[], current: WorkoutSession, entry: Entry) {
-  if (!entry.exerciseId) return [];
-  return sessions
-    .filter(
-      (s) => s.athleteId === current.athleteId && s.id !== current.id && s.date <= current.date,
-    )
+export function hasSessionHistory(session: WorkoutSession) {
+  return (
+    !session.deleted &&
+    (session.status === 'finished' ||
+      session.status === 'skipped' ||
+      session.blocks.some((b) => b.entries.some(hasRecordedActivity)))
+  );
+}
+export function hasRecordedActivity(e: Entry) {
+  return e.eligible && (e.completed || !!e.load.trim() || !!e.notes.trim());
+}
+export function exerciseRecords(
+  sessions: WorkoutSession[],
+  athleteId: string,
+  exerciseId: string | null,
+) {
+  if (!exerciseId) return [];
+  return visibleSessions(sessions)
+    .filter((s) => s.athleteId === athleteId)
     .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
-    .flatMap((s) =>
-      s.blocks
+    .flatMap((session) =>
+      session.blocks
         .flatMap((b) => b.entries)
-        .filter((e) => e.exerciseId === entry.exerciseId && (e.load || e.notes || e.completed))
-        .map((e) => ({ session: s, entry: e })),
+        .filter((entry) => entry.exerciseId === exerciseId && hasRecordedActivity(entry))
+        .map((entry) => ({ session, entry })),
     );
+}
+export function exerciseHistory(sessions: WorkoutSession[], current: WorkoutSession, entry: Entry) {
+  return exerciseRecords(sessions, current.athleteId, entry.exerciseId).filter(
+    ({ session }) => session.id !== current.id && session.date <= current.date,
+  );
 }
 export function todayInZone(zone: string, now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {

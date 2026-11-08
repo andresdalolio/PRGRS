@@ -1,10 +1,19 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, Check, CheckCheck, History, RotateCcw } from 'lucide-react';
-import { db, editSession } from '@/lib/db';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  CheckCheck,
+  History,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react';
+import { db, editSession, deleteExerciseResult } from '@/lib/db';
 import {
   completion,
   exerciseHistory,
+  exerciseRecords,
   formatDate,
   prescriptionText,
   safeUrl,
@@ -51,6 +60,7 @@ export default function Workout({
     });
   }
   const previous = (entry: Entry) => exerciseHistory(sessions, session, entry);
+  const records = (entry: Entry) => exerciseRecords(sessions, ownerId, entry.exerciseId);
   return (
     <>
       <button className="back-link" onClick={onBack}>
@@ -277,24 +287,46 @@ export default function Workout({
       </section>
       {history && (
         <Modal title={`${history.name} · history`} onClose={() => setHistory(null)}>
-          {previous(history).length ? (
-            previous(history).map(({ session: s, entry: e }) => (
+          {records(history).length ? (
+            records(history).map(({ session: s, entry: e }) => (
               <div className="history-result" key={`${s.id}-${e.id}`}>
                 <span className="eyebrow">
                   {formatDate(s.date, { month: 'short', day: 'numeric', year: 'numeric' })} ·{' '}
                   {s.status.replace('_', ' ')}
                 </span>
+                <p>
+                  {s.title} · {e.label}
+                </p>
                 <h3>{e.load || 'No load recorded'}</h3>
                 <p>{e.notes || 'No notes recorded'}</p>
                 <p className="small-note">
                   Prescribed: {prescriptionText(e.prescription)} ·{' '}
                   {e.completed ? 'Completed' : 'Unchecked'}
                 </p>
+                <button
+                  className="text-button"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        `Delete the recorded result for ${e.name} in ${s.title} on ${formatDate(s.date)}? This clears completion, actual load and notes. The workout and prescription stay in place.`,
+                      )
+                    )
+                      return;
+                    try {
+                      await deleteExerciseResult(db(), ownerId, s.id, e.id, s.version);
+                    } catch (error) {
+                      onError(error instanceof Error ? error.message : 'Unable to delete result');
+                    }
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Delete result
+                </button>
               </div>
             ))
           ) : (
             <Empty title="A fresh starting point">
-              Your earlier saved results for this exercise will appear here.
+              Your saved results for this exercise will appear here.
             </Empty>
           )}
         </Modal>

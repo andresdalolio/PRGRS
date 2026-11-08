@@ -1,5 +1,6 @@
+import type { Feedback, FeedbackMutation } from './feedback';
 import Dexie, { type EntityTable } from 'dexie';
-import { type WorkoutSession, type SessionLog, sessionLog } from './domain';
+import { type WorkoutSession, type SessionLog, sessionLog, hasSessionHistory } from './domain';
 export type Mutation = {
   id: string;
   ownerId: string;
@@ -21,6 +22,8 @@ export type Identity = {
 export class LocalDatabase extends Dexie {
   sessions!: EntityTable<WorkoutSession, 'id'>;
   outbox!: EntityTable<Mutation, 'id'>;
+  feedback!: EntityTable<Feedback, 'id'>;
+  feedbackOutbox!: EntityTable<FeedbackMutation, 'sequence'>;
   identities!: EntityTable<Identity, 'id'>;
   constructor(name = 'prgrs-v1') {
     super(name);
@@ -28,6 +31,10 @@ export class LocalDatabase extends Dexie {
       sessions: 'id,athleteId,date',
       outbox: 'id,ownerId,sessionId,createdAt',
       identities: 'id',
+    });
+    this.version(2).stores({
+      feedback: 'id,ownerId',
+      feedbackOutbox: '++sequence,&id,ownerId,itemId',
     });
   }
 }
@@ -43,7 +50,7 @@ export async function editSession(
 ) {
   return database.transaction('rw', database.sessions, database.outbox, async () => {
     const original = await database.sessions.get(id);
-    if (!original || original.athleteId !== ownerId)
+    if (!original || original.deleted || original.athleteId !== ownerId)
       throw new Error('Workout unavailable for this account.');
     const next = structuredClone(original);
     change(next);
@@ -108,6 +115,10 @@ export async function resolveConflict(
     const local = await database.sessions.get(remote.id);
     if (!local || local.version !== reviewedVersion)
       throw new Error('This workout changed since review. Close and review both versions again.');
+    if (choice === 'local' && remote.deleted)
+      throw new Error(
+        'This workout was deleted on another device. Export your pending edits, then accept the server deletion.',
+      );
     await database.outbox.bulkDelete(pending.map((m) => m.id));
     if (choice === 'remote') {
       await database.sessions.put(remote);
@@ -135,13 +146,16 @@ export async function discardAccount(
     database.sessions,
     database.outbox,
     database.identities,
+    database.feedback,
+    database.feedbackOutbox,
     async () => {
       const pending = await database.outbox.toArray();
       const identities = await database.identities.toArray();
+      const feedbackPending = await database.feedbackOutbox.toArray();
       const reviewed = new Set(reviewedMutationIds);
       if (
         identities.some((i) => i.id !== ownerId) ||
-        pending.some((m) => m.ownerId !== ownerId || !reviewed.has(m.id))
+        [...pending, ...feedbackPending].some((m) => m.ownerId !== ownerId || !reviewed.has(m.id))
       )
         throw new Error(
           'Local work changed. Review and export pending edits before discarding again.',
@@ -149,6 +163,8 @@ export async function discardAccount(
       await database.sessions.clear();
       await database.outbox.clear();
       await database.identities.clear();
+      await database.feedback.clear();
+      await database.feedbackOutbox.clear();
     },
   );
 }
@@ -158,14 +174,65 @@ export async function clearAccount(database: LocalDatabase, requireSynced = fals
     database.sessions,
     database.outbox,
     database.identities,
+    database.feedback,
+    database.feedbackOutbox,
     async () => {
-      if (requireSynced && (await database.outbox.count()))
+      if (
+        requireSynced &&
+        ((await database.outbox.count()) || (await database.feedbackOutbox.count()))
+      )
         throw new Error(
           'Unsynced work is preserved. Sign in with the same account and synchronize before signing out.',
         );
       await database.sessions.clear();
       await database.outbox.clear();
       await database.identities.clear();
+      await database.feedback.clear();
+      await database.feedbackOutbox.clear();
     },
   );
+}
+
+// Clearing a result keeps the prescription snapshot and independent finalization intact.
+export async function deleteExerciseResult(
+  database: LocalDatabase,
+  ownerId: string,
+  sessionId: string,
+  entryId: string,
+  reviewedVersion: number,
+) {
+  return editSession(database, ownerId, sessionId, (s) => {
+    if (s.version !== reviewedVersion)
+      throw new Error('This workout changed. Review the result again before deleting.');
+    const entry = s.blocks.flatMap((b) => b.entries).find((e) => e.id === entryId);
+    if (!entry) throw new Error('Exercise unavailable');
+    Object.assign(entry, { completed: false, load: '', notes: '' });
+  });
+}
+
+// Review and delete every workout on the athlete-local scheduled date in one durable transaction.
+export async function deleteDayHistory(
+  database: LocalDatabase,
+  ownerId: string,
+  date: string,
+  reviewed: { id: string; version: number }[],
+) {
+  return database.transaction('rw', database.sessions, database.outbox, async () => {
+    const sessions = (await database.sessions.where('date').equals(date).toArray()).filter(
+      (s) => s.athleteId === ownerId && hasSessionHistory(s),
+    );
+    if (
+      !reviewed.length ||
+      sessions.length !== reviewed.length ||
+      sessions.some((s) => !reviewed.some((r) => r.id === s.id && r.version === s.version))
+    )
+      throw new Error('This day changed. Review its workouts again before deleting history.');
+    for (const session of sessions)
+      await editSession(database, ownerId, session.id, (s) => {
+        s.deleted = true;
+        s.status = 'scheduled';
+        s.finishedAt = null;
+        s.blocks = [];
+      });
+  });
 }

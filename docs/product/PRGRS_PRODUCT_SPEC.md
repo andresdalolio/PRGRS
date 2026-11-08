@@ -33,6 +33,7 @@ Start with a single person who can act as both athlete and coach, but design acc
 - Select a day to open its workout(s); support past history and upcoming programming.
 - Today's date highlighted; date calculations respect each athlete's timezone.
 - Preserve correct handling of multiple workouts on a single day.
+- Calendar and History use the same stable session occurrences; a programmed workout with recorded results appears once. Athletes can delete recorded workouts only from History, removing those occurrences and results everywhere, including statistics. Calendar/programming offers no athlete delete action, and unstarted scheduled workouts on the same date are protected from history deletion. Removing a reusable program preserves recorded sessions as detached history; it must not recreate explicitly deleted occurrences.
 
 ### 2.3 Workout detail
 

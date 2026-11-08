@@ -40,3 +40,15 @@ Before a production launch, on physical iOS Safari + Add to Home Screen, Android
 8. Verify videos open externally and their lack of offline playback is understandable.
 
 WebKit automation checks the browser engine/mobile viewport; it cannot validate actual iOS installation, home-screen process lifecycle, storage eviction or device-specific OS behavior. Those remain manual checks.
+
+## History, themes and personal feedback
+
+`tests/history-feedback.test.ts` checks meaningful stable-ID history, read-only views, durable atomic result deletion, independent finalization, updated completion metrics, feedback lifecycle, retry and stale conflict/discard protection. `scripts/test-history-feedback.mjs` is included in `npm run db:test`; it checks sparse result persistence, result removal, preserved templates/snapshots, owner isolation, feedback creation/edit/status changes/deletion, version conflicts, receipts and prevention of resurrection.
+
+`tests/e2e/improvements.spec.ts` covers saved dark/light preferences after reload and reopening a page, explicit overrides versus system changes, offline feedback creation/edit/implementation/reopening/deletion, and history deletion through offline/reload/reconnect. Both Chromium and mobile WebKit use the existing disposable PostgreSQL HTTP adapter. They do not verify real hosted Auth, installed iOS PWA process termination, or OS storage eviction. Apply the new migration through the normal release process before using feedback against a hosted backend.
+
+Whole-day deletion coverage includes several workouts on the same date, an unrelated athlete and date, stale reviewed versions, newly added workouts, rollback on failed outbox writes, cancellation, search-hidden workouts, reload and offline reconnection. The updated behavior uses the existing session RPC with the additive delete-workout-sessions migration. Deleted occurrences are absent from Calendar, History, dashboard and metric denominators; server tests check physical removal of session results/entries/blocks, retained templates/exercises, old receipt replay, resurrection rejection and preserved detached history after program removal.
+
+The deletion change was verified in disposable PostgreSQL and the browser HTTP adapter. A local `supabase db advisors --type all --level warn` attempt could not connect because the Docker database at 127.0.0.1:54322 was not running; no advisor result or live Supabase migration is claimed for this change.
+
+History-only deletion regression coverage confirms Calendar has no delete control, an untouched workout remains scheduled when recorded workouts on the same date are removed, and direct RPC deletion of untouched programming is rejected. Apply `20261108004022_protect_unstarted_programming.sql` for the server guard; no hosted migration is implied by the tests.

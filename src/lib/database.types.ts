@@ -97,6 +97,68 @@ export type Database = {
           },
         ];
       };
+      feedback_items: {
+        Row: {
+          id: string;
+          owner_id: string;
+          title: string;
+          description: string;
+          implemented: boolean;
+          created_at: string;
+          version: number;
+          deleted: boolean;
+        };
+        Insert: {
+          id: string;
+          owner_id: string;
+          title: string;
+          description?: string;
+          implemented?: boolean;
+          created_at: string;
+          version?: number;
+          deleted?: boolean;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          title?: string;
+          description?: string;
+          implemented?: boolean;
+          created_at?: string;
+          version?: number;
+          deleted?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'feedback_items_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      feedback_receipts: {
+        Row: { mutation_id: string; owner_id: string; item_id: string; version: number };
+        Insert: { mutation_id: string; owner_id: string; item_id: string; version: number };
+        Update: { mutation_id?: string; owner_id?: string; item_id?: string; version?: number };
+        Relationships: [
+          {
+            foreignKeyName: 'feedback_receipts_item_id_fkey';
+            columns: ['item_id'];
+            isOneToOne: false;
+            referencedRelation: 'feedback_items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'feedback_receipts_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: { id: string; name: string; timezone: string; created_at: string };
         Insert: { id: string; name?: string; timezone?: string; created_at?: string };
@@ -456,6 +518,7 @@ export type Database = {
           withdrawn_at: string | null;
           position: number;
           provenance: Json | null;
+          deleted: boolean;
         };
         Insert: {
           id?: string;
@@ -474,6 +537,7 @@ export type Database = {
           withdrawn_at?: string | null;
           position?: number;
           provenance?: Json | null;
+          deleted?: boolean;
         };
         Update: {
           id?: string;
@@ -492,6 +556,7 @@ export type Database = {
           withdrawn_at?: string | null;
           position?: number;
           provenance?: Json | null;
+          deleted?: boolean;
         };
         Relationships: [
           {
@@ -561,6 +626,10 @@ export type Database = {
     };
     Views: { [key in never]: never };
     Functions: {
+      apply_feedback_mutation: {
+        Args: { p_id: string; p_item: string; p_base_version: number; p_value: Json };
+        Returns: number;
+      };
       apply_session_mutation: {
         Args: { p_id: string; p_session: string; p_base_version: number; p_log: Json };
         Returns: number;

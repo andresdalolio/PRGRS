@@ -5,10 +5,12 @@
 **PRGRS baseline reviewed:** `PRGRS_DATA_MODEL.md`, audit dated 2026-11-07, repository baseline `c79553d`.
 
 **Training sources reviewed:**
+
 - `Manual_Maestro_Metodologia_Entrenamiento.md` v1.0.0
 - `Perfil_y_Programa_Actual.md` v1.0.0
 
 **Classification:**
+
 - **Fully supported** — PRGRS can represent and preserve the requirement with its current implemented model/flows.
 - **Partially supported** — information can be displayed/stored only incompletely, as prose, or without the structure needed for reliable Trainer feedback.
 - **Not supported** — no implemented path can represent or return the requirement adequately.
@@ -42,13 +44,13 @@ A third major gap is **structured progression/substitution traceability**. Progr
 
 # 2. Compatibility matrix — planning and program structure
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-001 Program/block objective | Mandatory | **Partially supported** | Program/workout `description`, `category`, and instructions can describe objectives, but no explicit objective/priority semantics are modeled. | At minimum preserve objective/priority as unambiguous program/session metadata or a defined contract field rather than relying on arbitrary prose if Trainer integration will query it. |
-| TR-002 Program horizon/week identity | Mandatory | **Fully supported** | Programs contain numbered weeks 1–52 and assignments materialize dated sessions. | Keep. Ensure Trainer-generated programs obey runtime validation. |
-| TR-003 Session priority/intended effect | Mandatory | **Partially supported** | Can be expressed via title/category/description/instructions but is not structured. | Human-readable metadata is sufficient initially if the Trainer receives the original prescription; structure it later if workload analytics depend on it. |
-| TR-004 Session scheduling/order | Mandatory | **Partially supported** | Dated sessions exist and multiple workouts/day are supported, but assigned same-day order is not guaranteed and no time-of-day exists. | Preserve deterministic same-day sequence. Add time/separation only if double-session timing becomes prescribed. |
-| TR-005 Planned session duration | Conditional | **Fully supported** | `estimatedMinutes` is implemented. | Keep. |
+| Requirement                             | Importance  | PRGRS status            | Assessment                                                                                                                                     | Recommendation                                                                                                                                                                          |
+| --------------------------------------- | ----------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-001 Program/block objective          | Mandatory   | **Partially supported** | Program/workout `description`, `category`, and instructions can describe objectives, but no explicit objective/priority semantics are modeled. | At minimum preserve objective/priority as unambiguous program/session metadata or a defined contract field rather than relying on arbitrary prose if Trainer integration will query it. |
+| TR-002 Program horizon/week identity    | Mandatory   | **Fully supported**     | Programs contain numbered weeks 1–52 and assignments materialize dated sessions.                                                               | Keep. Ensure Trainer-generated programs obey runtime validation.                                                                                                                        |
+| TR-003 Session priority/intended effect | Mandatory   | **Partially supported** | Can be expressed via title/category/description/instructions but is not structured.                                                            | Human-readable metadata is sufficient initially if the Trainer receives the original prescription; structure it later if workload analytics depend on it.                               |
+| TR-004 Session scheduling/order         | Mandatory   | **Partially supported** | Dated sessions exist and multiple workouts/day are supported, but assigned same-day order is not guaranteed and no time-of-day exists.         | Preserve deterministic same-day sequence. Add time/separation only if double-session timing becomes prescribed.                                                                         |
+| TR-005 Planned session duration         | Conditional | **Fully supported**     | `estimatedMinutes` is implemented.                                                                                                             | Keep.                                                                                                                                                                                   |
 
 ### Key constraint
 
@@ -58,14 +60,14 @@ The current assignment formula places day 1 on the chosen start date rather than
 
 # 3. Compatibility matrix — session/block structures
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-010 Ordered session blocks | Mandatory | **Fully supported** | Ordered blocks, instructions, and empty instruction blocks are supported. | Keep. |
-| TR-011 Block types | Mandatory | **Fully supported for grouping/display** | `single`, `superset`, `circuit`, `emom`, `amrap`, `for_time`, warm-up, cooldown, instruction are implemented. | Keep; do not mistake heading/group type for execution logic. |
-| TR-012 Ordered entries | Mandatory | **Fully supported** | Entry positions are stored/rendered in order. | Keep. |
-| TR-013 Block-level rounds | Conditional | **Partially supported** | `rounds` exists only inside each entry prescription; block itself has no rounds field. Instructions can carry group rounds. | Add a way to represent group-level rounds without repeating the same value on every entry or duplicating exercises. |
-| TR-014 Block-level rest | Conditional | **Partially supported** | Entry `rest` and block instructions exist; no group-level recovery concept. | Allow group rest/recovery to be unambiguous. It may initially remain structured block metadata or protocol text. |
-| TR-015 Timing protocol | Conditional | **Partially supported** | EMOM/AMRAP/For Time are labels; total duration, interval structure, time cap, alternating stations, and scoring rely on prose/entry fields. | For display-only use, standardized protocol text can suffice. For timers/scoring/Trainer analysis, expose structured protocol and result data. |
+| Requirement                   | Importance  | PRGRS status                             | Assessment                                                                                                                                  | Recommendation                                                                                                                                 |
+| ----------------------------- | ----------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-010 Ordered session blocks | Mandatory   | **Fully supported**                      | Ordered blocks, instructions, and empty instruction blocks are supported.                                                                   | Keep.                                                                                                                                          |
+| TR-011 Block types            | Mandatory   | **Fully supported for grouping/display** | `single`, `superset`, `circuit`, `emom`, `amrap`, `for_time`, warm-up, cooldown, instruction are implemented.                               | Keep; do not mistake heading/group type for execution logic.                                                                                   |
+| TR-012 Ordered entries        | Mandatory   | **Fully supported**                      | Entry positions are stored/rendered in order.                                                                                               | Keep.                                                                                                                                          |
+| TR-013 Block-level rounds     | Conditional | **Partially supported**                  | `rounds` exists only inside each entry prescription; block itself has no rounds field. Instructions can carry group rounds.                 | Add a way to represent group-level rounds without repeating the same value on every entry or duplicating exercises.                            |
+| TR-014 Block-level rest       | Conditional | **Partially supported**                  | Entry `rest` and block instructions exist; no group-level recovery concept.                                                                 | Allow group rest/recovery to be unambiguous. It may initially remain structured block metadata or protocol text.                               |
+| TR-015 Timing protocol        | Conditional | **Partially supported**                  | EMOM/AMRAP/For Time are labels; total duration, interval structure, time cap, alternating stations, and scoring rely on prose/entry fields. | For display-only use, standardized protocol text can suffice. For timers/scoring/Trainer analysis, expose structured protocol and result data. |
 
 ### Methodology impact
 
@@ -75,13 +77,13 @@ Flat ordered blocks are sufficient for most current strength supersets and simpl
 
 # 4. Compatibility matrix — exercise identity and metadata
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-020 Stable exercise identity | Mandatory | **Fully supported within a coach library** | Stable UUID + `(owner_id, exercise_key)` provides continuity across templates/sessions. | Keep; Trainer must use stable keys consistently. |
-| TR-021 Explicit variant identity | Mandatory | **Partially supported** | Different variants can be represented with different exercise keys, but PRGRS does not enforce Trainer rules for when variants must split history. | Define an integration convention for exercise keys/variant identity. Never reuse one key for materially different ROM/stability/implement variants. |
-| TR-022 Pattern/function metadata | Recommended | **Not supported as structured data** | Could be written in text only. | Optional enhancement; useful for Trainer analytics/substitution but not required for initial display compatibility. |
-| TR-023 Technique instructions | Mandatory | **Fully supported** | Entry `instructions` plus prescription text can carry cues. | Keep. |
-| TR-024 Reference media | Optional | **Fully supported** | `referenceUrl` exists. | Keep. |
+| Requirement                      | Importance  | PRGRS status                               | Assessment                                                                                                                                         | Recommendation                                                                                                                                      |
+| -------------------------------- | ----------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-020 Stable exercise identity  | Mandatory   | **Fully supported within a coach library** | Stable UUID + `(owner_id, exercise_key)` provides continuity across templates/sessions.                                                            | Keep; Trainer must use stable keys consistently.                                                                                                    |
+| TR-021 Explicit variant identity | Mandatory   | **Partially supported**                    | Different variants can be represented with different exercise keys, but PRGRS does not enforce Trainer rules for when variants must split history. | Define an integration convention for exercise keys/variant identity. Never reuse one key for materially different ROM/stability/implement variants. |
+| TR-022 Pattern/function metadata | Recommended | **Not supported as structured data**       | Could be written in text only.                                                                                                                     | Optional enhancement; useful for Trainer analytics/substitution but not required for initial display compatibility.                                 |
+| TR-023 Technique instructions    | Mandatory   | **Fully supported**                        | Entry `instructions` plus prescription text can carry cues.                                                                                        | Keep.                                                                                                                                               |
+| TR-024 Reference media           | Optional    | **Fully supported**                        | `referenceUrl` exists.                                                                                                                             | Keep.                                                                                                                                               |
 
 ### Canonical metadata concern
 
@@ -96,22 +98,22 @@ This is not a training-methodology change; it is an identity/provenance integrat
 
 # 5. Compatibility matrix — exercise prescription
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-030 Sets | Mandatory when applicable | **Fully supported at entry level** | Integer `sets`. | Keep. |
-| TR-031 Reps/ranges | Mandatory when applicable | **Fully supported for display** | Free string supports ranges and per-side wording. | Keep; structured numeric semantics are only needed for automatic analysis. |
-| TR-032 Duration | Conditional | **Fully supported for display** | String field. | Keep. |
-| TR-033 Distance | Conditional | **Fully supported for display** | String field. | Keep; value+unit structure recommended for later analysis. |
-| TR-034 Calories | Conditional | **Fully supported** | Integer. | Keep. |
-| TR-035 Prescribed load | Conditional | **Fully supported for display** | String can represent kg, DB choice, or “calibrate”. | Keep human-readable display; structured value/unit becomes important for automated comparison. |
-| TR-036 Target RPE/RIR | Core methodology | **Partially supported** | Can be placed in `load`, `text`, or instructions, but no dedicated target fields. Unknown `rpe`/`rir` keys are rejected. | Add first-class effort target semantics or a formally defined structured extension. This is important to avoid conflating RPE with load and to compare target vs actual. |
-| TR-037 Percentage + denominator | Conditional | **Partially supported** | Can be text, but no structured percentage/reference-type distinction. | Preserve percent and denominator explicitly whenever percentages are used. Do not store ambiguous “80%” alone. |
-| TR-038 Tempo | Conditional | **Fully supported for display** | `tempo` string. | Keep; instructions should explain ambiguous notation. |
-| TR-039 Rest | Important | **Fully supported at entry level** | `rest` string. | Keep; group-level rest still missing. |
-| TR-040 Side semantics | Conditional | **Partially supported** | Reps text can say “per side”; not structured. | Adequate for display; structure only if automatic totals/analytics are desired. |
-| TR-041 Set-specific prescription | Conditional but essential when used | **Not supported natively** | One entry has one prescription object. Repeating entries could emulate sets but changes completion units/history semantics. | Add a set-detail representation or equivalent prescription structure that keeps one exercise occurrence while allowing per-set reps/load/RPE. |
-| TR-042 Warm-up vs work sets | Conditional | **Partially supported** | Could use separate entries/blocks/instructions; no explicit set role. | Support set role or clearly separate warm-up entries from effective work if volume analytics will be used. |
-| TR-043 Stop criterion | Important | **Partially supported** | Can be written in entry/block instructions. | Prose is acceptable initially; ensure Trainer output includes it for anchors/high-fatigue work. |
+| Requirement                      | Importance                          | PRGRS status                       | Assessment                                                                                                                  | Recommendation                                                                                                                                                           |
+| -------------------------------- | ----------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TR-030 Sets                      | Mandatory when applicable           | **Fully supported at entry level** | Integer `sets`.                                                                                                             | Keep.                                                                                                                                                                    |
+| TR-031 Reps/ranges               | Mandatory when applicable           | **Fully supported for display**    | Free string supports ranges and per-side wording.                                                                           | Keep; structured numeric semantics are only needed for automatic analysis.                                                                                               |
+| TR-032 Duration                  | Conditional                         | **Fully supported for display**    | String field.                                                                                                               | Keep.                                                                                                                                                                    |
+| TR-033 Distance                  | Conditional                         | **Fully supported for display**    | String field.                                                                                                               | Keep; value+unit structure recommended for later analysis.                                                                                                               |
+| TR-034 Calories                  | Conditional                         | **Fully supported**                | Integer.                                                                                                                    | Keep.                                                                                                                                                                    |
+| TR-035 Prescribed load           | Conditional                         | **Fully supported for display**    | String can represent kg, DB choice, or “calibrate”.                                                                         | Keep human-readable display; structured value/unit becomes important for automated comparison.                                                                           |
+| TR-036 Target RPE/RIR            | Core methodology                    | **Partially supported**            | Can be placed in `load`, `text`, or instructions, but no dedicated target fields. Unknown `rpe`/`rir` keys are rejected.    | Add first-class effort target semantics or a formally defined structured extension. This is important to avoid conflating RPE with load and to compare target vs actual. |
+| TR-037 Percentage + denominator  | Conditional                         | **Partially supported**            | Can be text, but no structured percentage/reference-type distinction.                                                       | Preserve percent and denominator explicitly whenever percentages are used. Do not store ambiguous “80%” alone.                                                           |
+| TR-038 Tempo                     | Conditional                         | **Fully supported for display**    | `tempo` string.                                                                                                             | Keep; instructions should explain ambiguous notation.                                                                                                                    |
+| TR-039 Rest                      | Important                           | **Fully supported at entry level** | `rest` string.                                                                                                              | Keep; group-level rest still missing.                                                                                                                                    |
+| TR-040 Side semantics            | Conditional                         | **Partially supported**            | Reps text can say “per side”; not structured.                                                                               | Adequate for display; structure only if automatic totals/analytics are desired.                                                                                          |
+| TR-041 Set-specific prescription | Conditional but essential when used | **Not supported natively**         | One entry has one prescription object. Repeating entries could emulate sets but changes completion units/history semantics. | Add a set-detail representation or equivalent prescription structure that keeps one exercise occurrence while allowing per-set reps/load/RPE.                            |
+| TR-042 Warm-up vs work sets      | Conditional                         | **Partially supported**            | Could use separate entries/blocks/instructions; no explicit set role.                                                       | Support set role or clearly separate warm-up entries from effective work if volume analytics will be used.                                                               |
+| TR-043 Stop criterion            | Important                           | **Partially supported**            | Can be written in entry/block instructions.                                                                                 | Prose is acceptable initially; ensure Trainer output includes it for anchors/high-fatigue work.                                                                          |
 
 ### Critical note on “structured vs prose”
 
@@ -124,11 +126,11 @@ The methodology does **not** require PRGRS to automatically calculate progressio
 
 # 6. Compatibility matrix — substitutions
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-050 Planned alternatives | Conditional | **Partially supported** | Alternatives can be listed in entry instructions/text but have no explicit relation to the original exercise. | Acceptable for initial workout display; a structured alternative link would improve UX and history. |
-| TR-051 Actual substitution identity | Mandatory when substitution happens | **Not supported** | Result remains attached to the prescribed `exercise_id`; notes can mention another exercise but history still points to the original. | Add a way for the completed result to identify the actual movement/variant performed. This is essential for trustworthy progression history. |
-| TR-052 Substitution reason/result | Mandatory when substitution happens | **Partially supported** | Can be written in notes but not reliably queried. | Capture reason and result in a recoverable structured form or a standardized modification object. |
+| Requirement                         | Importance                          | PRGRS status            | Assessment                                                                                                                            | Recommendation                                                                                                                               |
+| ----------------------------------- | ----------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-050 Planned alternatives         | Conditional                         | **Partially supported** | Alternatives can be listed in entry instructions/text but have no explicit relation to the original exercise.                         | Acceptable for initial workout display; a structured alternative link would improve UX and history.                                          |
+| TR-051 Actual substitution identity | Mandatory when substitution happens | **Not supported**       | Result remains attached to the prescribed `exercise_id`; notes can mention another exercise but history still points to the original. | Add a way for the completed result to identify the actual movement/variant performed. This is essential for trustworthy progression history. |
+| TR-052 Substitution reason/result   | Mandatory when substitution happens | **Partially supported** | Can be written in notes but not reliably queried.                                                                                     | Capture reason and result in a recoverable structured form or a standardized modification object.                                            |
 
 ### Methodology risk
 
@@ -138,11 +140,11 @@ This is a high-priority issue. If a user substitutes a machine press for barbell
 
 # 7. Compatibility matrix — progression
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-060 Progression criterion | Mandatory for anchors | **Partially supported** | Can be included in text/instructions; no executable rule. | Executable automation is not required. Preserve the rule as a distinct, readable part of the prescription. |
-| TR-061 Progression variable | Mandatory when rule exists | **Partially supported** | Can be described in text only. | Prefer explicit metadata if Trainer↔PRGRS round-tripping is expected. |
-| TR-062 Deload/reduction intent | Conditional | **Partially supported** | Can be expressed in program/workout descriptions and prescriptions. | A simple tag/intent would improve history but is not essential for initial compatibility. |
+| Requirement                    | Importance                 | PRGRS status            | Assessment                                                          | Recommendation                                                                                             |
+| ------------------------------ | -------------------------- | ----------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| TR-060 Progression criterion   | Mandatory for anchors      | **Partially supported** | Can be included in text/instructions; no executable rule.           | Executable automation is not required. Preserve the rule as a distinct, readable part of the prescription. |
+| TR-061 Progression variable    | Mandatory when rule exists | **Partially supported** | Can be described in text only.                                      | Prefer explicit metadata if Trainer↔PRGRS round-tripping is expected.                                      |
+| TR-062 Deload/reduction intent | Conditional                | **Partially supported** | Can be expressed in program/workout descriptions and prescriptions. | A simple tag/intent would improve history but is not essential for initial compatibility.                  |
 
 ### Important conclusion
 
@@ -152,17 +154,17 @@ PRGRS does **not** need its own progression engine to satisfy the Trainer. The T
 
 # 8. Compatibility matrix — actual resistance performance
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-070 Session completed/partial/omitted | Mandatory | **Partially supported** | `scheduled/in_progress/finished/skipped` exists and finished sessions can be incomplete. No explicit `partial` status, but percentage can imply partial completion. | Current semantics are workable if partial completion remains recoverable from detailed results. |
-| TR-071 Exercise completion | Mandatory | **Fully supported at coarse level** | Boolean per eligible entry. | Keep, but do not treat as sufficient performance evidence. |
-| TR-072 Actual sets | Mandatory for progression | **Not supported** | No actual-set field/path. | Add structured actual work-set count or infer it from set results. |
-| TR-073 Actual reps per set | Mandatory for progression | **Not supported** | Notes only. | Add structured per-set actual reps. |
-| TR-074 Actual load per set | Mandatory when loaded | **Not supported** | One exercise-level actual `load` string only. | Add structured set-level load with unit; retain a quick-copy/default mechanism for UX if desired. |
-| TR-075 Actual RPE/RIR | Mandatory for anchors | **Not supported** | Notes only; unused SQL `metrics` is not exposed through domain/UI/RPC. | Expose structured actual effort. Per-set is preferred for anchors; exercise-level summary may supplement it. |
-| TR-076 Technique quality | Mandatory for anchors | **Not supported structurally** | Notes only. | Add simple coded technique quality + optional note. |
-| TR-077 Actual rest | Optional/conditional | **Not supported structurally** | Notes only. | Low priority. |
-| TR-078 Exercise notes | Mandatory capability | **Fully supported** | `notes` up to 4000 chars. | Keep as contextual supplement, not replacement for core metrics. |
+| Requirement                              | Importance                | PRGRS status                        | Assessment                                                                                                                                                          | Recommendation                                                                                               |
+| ---------------------------------------- | ------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| TR-070 Session completed/partial/omitted | Mandatory                 | **Partially supported**             | `scheduled/in_progress/finished/skipped` exists and finished sessions can be incomplete. No explicit `partial` status, but percentage can imply partial completion. | Current semantics are workable if partial completion remains recoverable from detailed results.              |
+| TR-071 Exercise completion               | Mandatory                 | **Fully supported at coarse level** | Boolean per eligible entry.                                                                                                                                         | Keep, but do not treat as sufficient performance evidence.                                                   |
+| TR-072 Actual sets                       | Mandatory for progression | **Not supported**                   | No actual-set field/path.                                                                                                                                           | Add structured actual work-set count or infer it from set results.                                           |
+| TR-073 Actual reps per set               | Mandatory for progression | **Not supported**                   | Notes only.                                                                                                                                                         | Add structured per-set actual reps.                                                                          |
+| TR-074 Actual load per set               | Mandatory when loaded     | **Not supported**                   | One exercise-level actual `load` string only.                                                                                                                       | Add structured set-level load with unit; retain a quick-copy/default mechanism for UX if desired.            |
+| TR-075 Actual RPE/RIR                    | Mandatory for anchors     | **Not supported**                   | Notes only; unused SQL `metrics` is not exposed through domain/UI/RPC.                                                                                              | Expose structured actual effort. Per-set is preferred for anchors; exercise-level summary may supplement it. |
+| TR-076 Technique quality                 | Mandatory for anchors     | **Not supported structurally**      | Notes only.                                                                                                                                                         | Add simple coded technique quality + optional note.                                                          |
+| TR-077 Actual rest                       | Optional/conditional      | **Not supported structurally**      | Notes only.                                                                                                                                                         | Low priority.                                                                                                |
+| TR-078 Exercise notes                    | Mandatory capability      | **Fully supported**                 | `notes` up to 4000 chars.                                                                                                                                           | Keep as contextual supplement, not replacement for core metrics.                                             |
 
 ### Highest-impact incompatibility
 
@@ -172,17 +174,17 @@ The methodology's progression algorithm uses **actual reps + actual load + actua
 
 # 9. Compatibility matrix — running/aerobic work
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-080 Cardio modality | Mandatory when used | **Fully supported through exercise identity/name** | Running/row/bike/Ski can be exercises. | Keep stable identities. |
-| TR-081 Planned duration/distance | Conditional | **Fully supported for display** | `duration` and `distance` strings. | Keep. |
-| TR-082 Planned effort/zone/pace | Conditional | **Partially supported** | Can be placed in load/text/instructions; no dedicated pace/zone/RPE model. | Standardized fields recommended for Trainer interchange, especially to distinguish easy vs quality work. |
-| TR-083 Actual duration | Mandatory for completed cardio | **Not supported structurally** | Notes only. | Add actual duration metric. |
-| TR-084 Actual distance | Mandatory when meaningful | **Not supported structurally** | Notes only. | Add actual distance + unit. |
-| TR-085 Actual pace/speed | Conditional | **Not supported structurally** | Notes only. | Add when relevant. |
-| TR-086 HR/zones | Optional/conditional | **Not supported structurally** | Notes only. | Future enhancement unless zone-based prescription is actively used. |
-| TR-087 Interval splits | Mandatory for quality intervals | **Not supported** | No interval result structure. | Add structured split results or a general interval-result model. |
-| TR-088 Session RPE | Strongly recommended | **Not supported structurally** | Notes only. | Add session/cardio effort metric. |
+| Requirement                      | Importance                      | PRGRS status                                       | Assessment                                                                 | Recommendation                                                                                           |
+| -------------------------------- | ------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| TR-080 Cardio modality           | Mandatory when used             | **Fully supported through exercise identity/name** | Running/row/bike/Ski can be exercises.                                     | Keep stable identities.                                                                                  |
+| TR-081 Planned duration/distance | Conditional                     | **Fully supported for display**                    | `duration` and `distance` strings.                                         | Keep.                                                                                                    |
+| TR-082 Planned effort/zone/pace  | Conditional                     | **Partially supported**                            | Can be placed in load/text/instructions; no dedicated pace/zone/RPE model. | Standardized fields recommended for Trainer interchange, especially to distinguish easy vs quality work. |
+| TR-083 Actual duration           | Mandatory for completed cardio  | **Not supported structurally**                     | Notes only.                                                                | Add actual duration metric.                                                                              |
+| TR-084 Actual distance           | Mandatory when meaningful       | **Not supported structurally**                     | Notes only.                                                                | Add actual distance + unit.                                                                              |
+| TR-085 Actual pace/speed         | Conditional                     | **Not supported structurally**                     | Notes only.                                                                | Add when relevant.                                                                                       |
+| TR-086 HR/zones                  | Optional/conditional            | **Not supported structurally**                     | Notes only.                                                                | Future enhancement unless zone-based prescription is actively used.                                      |
+| TR-087 Interval splits           | Mandatory for quality intervals | **Not supported**                                  | No interval result structure.                                              | Add structured split results or a general interval-result model.                                         |
+| TR-088 Session RPE               | Strongly recommended            | **Not supported structurally**                     | Notes only.                                                                | Add session/cardio effort metric.                                                                        |
 
 ### Methodology impact
 
@@ -192,24 +194,24 @@ The Trainer can prescribe a run today using `duration`, `distance`, and instruct
 
 # 10. Compatibility matrix — conditioning / HYROX-style work
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-090 Station prescription | Mandatory when used | **Fully supported for basic display** | Ordered entries with reps/distance/calories/duration/load. | Keep. |
-| TR-091 Rounds/protocol | Mandatory when used | **Partially supported** | Entry rounds + block instructions; no group-level rounds semantics. | Add group protocol/rounds. |
-| TR-092 Actual block score | Conditional | **Not supported structurally** | Notes only; no block result. | Add block-level score appropriate to AMRAP/For Time/etc. |
-| TR-093 Round/station splits | Conditional | **Not supported** | No result model. | Add when conditioning progression/pacing is relevant. |
-| TR-094 Transitions | Optional | **Not supported** | No result model. | Future enhancement only. |
+| Requirement                 | Importance          | PRGRS status                          | Assessment                                                          | Recommendation                                           |
+| --------------------------- | ------------------- | ------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------- |
+| TR-090 Station prescription | Mandatory when used | **Fully supported for basic display** | Ordered entries with reps/distance/calories/duration/load.          | Keep.                                                    |
+| TR-091 Rounds/protocol      | Mandatory when used | **Partially supported**               | Entry rounds + block instructions; no group-level rounds semantics. | Add group protocol/rounds.                               |
+| TR-092 Actual block score   | Conditional         | **Not supported structurally**        | Notes only; no block result.                                        | Add block-level score appropriate to AMRAP/For Time/etc. |
+| TR-093 Round/station splits | Conditional         | **Not supported**                     | No result model.                                                    | Add when conditioning progression/pacing is relevant.    |
+| TR-094 Transitions          | Optional            | **Not supported**                     | No result model.                                                    | Future enhancement only.                                 |
 
 ---
 
 # 11. Compatibility matrix — recovery and safety
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-100 Pre-session fatigue/readiness | Recommended/conditional | **Not supported structurally** | Could use notes only at entry level; no session note field exposed for this purpose. | Add lightweight session-level readiness/fatigue capture if PRGRS is the Trainer feedback source. |
-| TR-101 Post-session fatigue | Optional/conditional | **Not supported structurally** | Notes only. | Low/medium priority. |
-| TR-102 Sleep/recovery context | Conditional | **Not supported structurally** | No dedicated capture. | Optional session/day context field is sufficient; avoid unnecessary medical data. |
-| TR-103 Training-relevant discomfort | Safety-critical capability | **Partially supported through notes** | Entry notes can capture it, but no standardized session-level signal. | Provide a lightweight discomfort/safety note/flag. Do not diagnose. |
+| Requirement                          | Importance                 | PRGRS status                          | Assessment                                                                           | Recommendation                                                                                   |
+| ------------------------------------ | -------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| TR-100 Pre-session fatigue/readiness | Recommended/conditional    | **Not supported structurally**        | Could use notes only at entry level; no session note field exposed for this purpose. | Add lightweight session-level readiness/fatigue capture if PRGRS is the Trainer feedback source. |
+| TR-101 Post-session fatigue          | Optional/conditional       | **Not supported structurally**        | Notes only.                                                                          | Low/medium priority.                                                                             |
+| TR-102 Sleep/recovery context        | Conditional                | **Not supported structurally**        | No dedicated capture.                                                                | Optional session/day context field is sufficient; avoid unnecessary medical data.                |
+| TR-103 Training-relevant discomfort  | Safety-critical capability | **Partially supported through notes** | Entry notes can capture it, but no standardized session-level signal.                | Provide a lightweight discomfort/safety note/flag. Do not diagnose.                              |
 
 ### Priority note
 
@@ -219,23 +221,23 @@ These fields are less urgent than actual sets/reps/load/RPE, but the Trainer's m
 
 # 12. Compatibility matrix — traceability and history
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-110 Preserve original prescription | Mandatory | **Fully supported at assigned-session level** | Sessions snapshot prescribed content; template edits do not rewrite assigned sessions. | Strong fit; keep this behavior. |
-| TR-111 Link result to exact occurrence | Mandatory | **Fully supported** | Results keyed to session entry. | Keep. |
-| TR-112 Program/block provenance | Recommended→mandatory for full interchange | **Partially supported** | Assignment stores program/version, but removal can detach historical snapshots and lose program/version provenance. | Preserve durable provenance if PRGRS becomes longitudinal Trainer history. |
-| TR-113 Modification history | Conditional | **Partially supported** | Notes can describe changes, but no structured modification history. | Add standardized deviation/substitution logging if closed-loop coaching is intended. |
-| TR-132 Exercise history | Mandatory | **Partially supported** | History by exercise UUID exists, but only completion/load/notes and no comparable-variant metadata. | Keep stable IDs; enrich result metrics before relying on history for progression. |
+| Requirement                            | Importance                                 | PRGRS status                                  | Assessment                                                                                                          | Recommendation                                                                       |
+| -------------------------------------- | ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| TR-110 Preserve original prescription  | Mandatory                                  | **Fully supported at assigned-session level** | Sessions snapshot prescribed content; template edits do not rewrite assigned sessions.                              | Strong fit; keep this behavior.                                                      |
+| TR-111 Link result to exact occurrence | Mandatory                                  | **Fully supported**                           | Results keyed to session entry.                                                                                     | Keep.                                                                                |
+| TR-112 Program/block provenance        | Recommended→mandatory for full interchange | **Partially supported**                       | Assignment stores program/version, but removal can detach historical snapshots and lose program/version provenance. | Preserve durable provenance if PRGRS becomes longitudinal Trainer history.           |
+| TR-113 Modification history            | Conditional                                | **Partially supported**                       | Notes can describe changes, but no structured modification history.                                                 | Add standardized deviation/substitution logging if closed-loop coaching is intended. |
+| TR-132 Exercise history                | Mandatory                                  | **Partially supported**                       | History by exercise UUID exists, but only completion/load/notes and no comparable-variant metadata.                 | Keep stable IDs; enrich result metrics before relying on history for progression.    |
 
 ---
 
 # 13. Compatibility matrix — completion/adherence semantics
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-120 Eligibility | Mandatory | **Fully supported** | `eligible` controls exercise completion contribution; instruction blocks reject eligible entries. | Keep. |
-| TR-121 Meaningful partial completion | Mandatory | **Partially supported** | Session may finish at e.g. 90%, but each exercise occurrence is binary; 2/4 sets cannot be represented except notes. | Once set logging exists, derive richer partial completion without changing simple UX. |
-| TR-122 Circuit/group completion | Conditional | **Not supported** | Completion counts entries, not rounds/stations completed. | Add block/round result semantics for circuits when necessary. |
+| Requirement                          | Importance  | PRGRS status            | Assessment                                                                                                           | Recommendation                                                                        |
+| ------------------------------------ | ----------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| TR-120 Eligibility                   | Mandatory   | **Fully supported**     | `eligible` controls exercise completion contribution; instruction blocks reject eligible entries.                    | Keep.                                                                                 |
+| TR-121 Meaningful partial completion | Mandatory   | **Partially supported** | Session may finish at e.g. 90%, but each exercise occurrence is binary; 2/4 sets cannot be represented except notes. | Once set logging exists, derive richer partial completion without changing simple UX. |
+| TR-122 Circuit/group completion      | Conditional | **Not supported**       | Completion counts entries, not rounds/stations completed.                                                            | Add block/round result semantics for circuits when necessary.                         |
 
 ### Methodology concern
 
@@ -245,11 +247,11 @@ Current completion percentages are **UI adherence indicators**, not valid measur
 
 # 14. Compatibility matrix — feedback/interchange
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
+| Requirement                                       | Importance                       | PRGRS status                                        | Assessment                                                                                                                                 | Recommendation                                                                                                                       |
+| ------------------------------------------------- | -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | TR-130 Machine-readable completed-session history | Essential for Trainer↔PRGRS loop | **Not supported as an external integration/export** | Session data exists internally, but there is no full completed-history export/Trainer endpoint. Pending-edit export is not history export. | Create a supported read/export contract for prescribed + actual training history before relying on PRGRS as Trainer evidence source. |
-| TR-131 Planned vs actual comparison | Essential | **Partially supported internally** | Prescription snapshot + coarse result coexist, but actual detail is insufficient. | Enrich results and expose both sides together. |
-| TR-133 Weekly aggregation inputs | Recommended | **Partially supported** | Session status/completion exists, but effective volume, cardio metrics, effort, and recovery inputs are missing. | Do not prioritize dashboards before underlying structured data exists. |
+| TR-131 Planned vs actual comparison               | Essential                        | **Partially supported internally**                  | Prescription snapshot + coarse result coexist, but actual detail is insufficient.                                                          | Enrich results and expose both sides together.                                                                                       |
+| TR-133 Weekly aggregation inputs                  | Recommended                      | **Partially supported**                             | Session status/completion exists, but effective volume, cardio metrics, effort, and recovery inputs are missing.                           | Do not prioritize dashboards before underlying structured data exists.                                                               |
 
 ### Integration boundary
 
@@ -261,11 +263,11 @@ The reverse direction, **PRGRS → Trainer**, is the major missing integration c
 
 # 15. Units and semantic precision
 
-| Requirement | Importance | PRGRS status | Assessment | Recommendation |
-|---|---|---|---|---|
-| TR-140 Numeric values + units | Important for analysis | **Partially supported** | Most prescription/result quantities are strings; only some values are integers. | Keep display strings if desired, but add machine-readable value/unit semantics for actual metrics and any target values used in progression. |
-| TR-141 Ranges/per-side semantics | Conditional | **Partially supported** | Human-readable strings can express them. | Structure only where calculation/comparison is needed. |
-| TR-142 Unknown/not calibrated | Mandatory | **Fully representable in prose/omission** | Empty/omitted fields or `load` text can indicate calibration. | Define a consistent Trainer convention so “unknown” is never interpreted as zero or missing accidentally. |
+| Requirement                      | Importance             | PRGRS status                              | Assessment                                                                      | Recommendation                                                                                                                               |
+| -------------------------------- | ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-140 Numeric values + units    | Important for analysis | **Partially supported**                   | Most prescription/result quantities are strings; only some values are integers. | Keep display strings if desired, but add machine-readable value/unit semantics for actual metrics and any target values used in progression. |
+| TR-141 Ranges/per-side semantics | Conditional            | **Partially supported**                   | Human-readable strings can express them.                                        | Structure only where calculation/comparison is needed.                                                                                       |
+| TR-142 Unknown/not calibrated    | Mandatory              | **Fully representable in prose/omission** | Empty/omitted fields or `load` text can indicate calibration.                   | Define a consistent Trainer convention so “unknown” is never interpreted as zero or missing accidentally.                                    |
 
 ---
 
@@ -461,6 +463,7 @@ Keep the existing v1 importer functional for basic program delivery. Define a de
 ### Phase B — Fix the feedback loop first
 
 Prioritize structured actual results over dashboards or automatic progression:
+
 - set results,
 - actual load/reps/effort,
 - actual substitution identity,
@@ -485,6 +488,7 @@ Only after the underlying prescription/result data is trustworthy should PRGRS c
 **PRGRS can currently represent a large majority of the Trainer's workouts visually, but it cannot yet represent the full Trainer methodology as a reliable closed-loop training record.**
 
 The current model is sufficient for:
+
 - multi-week workout delivery,
 - exercise ordering,
 - most basic strength/hypertrophy prescriptions,
@@ -495,6 +499,7 @@ The current model is sufficient for:
 - historical preservation of assigned prescription snapshots.
 
 It is not sufficient for:
+
 - reliable progression decisions from actual performance,
 - set-level comparison,
 - trustworthy substitution history,
@@ -503,4 +508,3 @@ It is not sufficient for:
 - closed-loop PRGRS → Trainer feedback without manual prose interpretation.
 
 Therefore, the correct technical direction is **not to simplify the Trainer methodology**. PRGRS should preserve its current simple workout UX while extending the underlying prescription/result contract so that the Trainer can recover the evidence it actually uses.
-

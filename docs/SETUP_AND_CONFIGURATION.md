@@ -64,6 +64,57 @@ Verify: rerun `npx supabase migration list --remote`; every repository migration
 
 For production, first verify a recent backup/PITR restore point in the dashboard and rehearse restoration to a separate project. Record the application commit and migration versions. Review expected locks and apply in a quiet window. All current migrations are transactional; a failed transaction rolls back its changes. Diagnose failure before retrying; never repair history to hide a failure. Retain additive columns/policies when rolling back the app; use a reviewed forward migration for database corrections. Restoring a backup can lose subsequent training and requires separate authorization and a recovery plan for pending device edits. Never casually run reset, drop, migration repair, or a destructive down migration against live data.
 
+#### Updating an existing database after code changes
+
+New migration files require a database update before using the corresponding app changes. Restarting Next.js, running tests, and generating database types do not apply migrations to your local or hosted Supabase database. Every database-changing implementation must report the required files, exact application steps, and whether anything was actually applied.
+
+The history and feedback changes require these migrations, in order, after any earlier pending migrations:
+
+| Migration                                                                                                       | Purpose                                                                                                                                                                 |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [20261108000801_history_and_feedback.sql](../supabase/migrations/20261108000801_history_and_feedback.sql)       | Meaningful exercise results and the personal feedback backlog, with ownership checks and offline synchronization.                                                       |
+| [20261108002738_delete_workout_sessions.sql](../supabase/migrations/20261108002738_delete_workout_sessions.sql) | Delete workouts from History, Calendar and statistics; remove session results/exercises and retain deletion markers to prevent stale offline edits from restoring them. |
+
+The follow-up [20261108004022_protect_unstarted_programming.sql](../supabase/migrations/20261108004022_protect_unstarted_programming.sql) is also required. It prevents athlete history deletion from removing unstarted programming, even through an older client. The delete action is now available only on History; other unstarted workouts on the same date remain scheduled.
+
+These migrations were tested in disposable PostgreSQL. The implementation did not apply them to the user's local Docker stack or hosted project; use migration history to determine which are still pending.
+
+**Hosted Supabase:** open a terminal in the PRGRS repository, keep the VPN enabled, and run:
+
+```sh
+export NODE_USE_SYSTEM_CA=1
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase migration list --remote
+npx supabase db push --remote --dry-run --skip-vault
+```
+
+Replace `YOUR_PROJECT_REF` with the reference in the app's Supabase URL (`https://YOUR_PROJECT_REF.supabase.co`). Run `npx supabase login` first if the CLI asks you to authenticate. Linking without `--skip-pooler` allows IPv4 pooler discovery. Review the target project and all pending files printed by the dry-run. Then apply them:
+
+```sh
+npx supabase db push --remote --skip-vault
+```
+
+Verify the update:
+
+```sh
+npx supabase migration list --remote
+npx supabase db push --remote --dry-run --skip-vault
+```
+
+The required versions should appear in both the Local and Remote columns, and the dry-run should show no pending migrations. Then reload PRGRS, test Profile → Feedback & ideas, and confirm that an explicitly deleted workout disappears from both History and Calendar. Use an expendable workout for the deletion check. Previously reset workouts remain scheduled. Athletes cannot delete programming from Calendar.
+
+If linking or the connection fails, follow [Supabase access with the VPN enabled](#supabase-access-with-the-vpn-enabled), including the session-pooler fallback. Keep TLS verification enabled.
+
+**Local Docker Supabase:** with Docker running, apply and verify using:
+
+```sh
+npx supabase start
+npx supabase migration up
+npx supabase migration list
+```
+
+CLI v3 uses the local stack by default. These local commands do not update a hosted project. Apply pending migration files through the CLI rather than pasting them into SQL Editor, so migration history stays consistent. No database reset is needed.
+
 ### D. Configure email/password authentication
 
 In Supabase Authentication settings:

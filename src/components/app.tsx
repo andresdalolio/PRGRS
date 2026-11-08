@@ -26,6 +26,7 @@ import {
 import { configured, supabase, unwrap, signOutDevice } from '@/lib/supabase';
 import {
   clearAccount,
+  deleteDayHistory,
   discardAccount,
   db,
   mergeRemote,
@@ -38,6 +39,8 @@ import { configuration } from '@/lib/config';
 import { reportError } from '@/lib/observability';
 import {
   adherence,
+  hasSessionHistory,
+  visibleSessions,
   completion,
   formatDate,
   shiftDate,
@@ -49,6 +52,8 @@ import {
 import { Brand, Empty, Meter, Modal, Notice, SessionCard } from './ui';
 import Workout from './workout';
 import Coach from './coach';
+import FeedbackSection from './feedback';
+import { syncFeedback } from '@/lib/feedback';
 type Tab = 'home' | 'workouts' | 'history' | 'profile' | 'coach';
 const nav = [
   { id: 'home', label: 'Home', icon: Home },
@@ -89,14 +94,16 @@ function Application() {
       () =>
         db()
           .sessions.toArray()
-          .then((items) => items.sort(compareSessionOrder)),
+          .then((items) => visibleSessions(items).sort(compareSessionOrder)),
       [],
       [],
     ),
-    outbox = useLiveQuery(() => db().outbox.toArray(), [], []);
+    outbox = useLiveQuery(() => db().outbox.toArray(), [], []),
+    feedbackOutbox = useLiveQuery(() => db().feedbackOutbox.toArray(), [], []);
   const today = todayInZone(identity?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
   const own = sessions.filter((s) => s.athleteId === identity?.id),
-    pending = outbox.filter((m) => m.ownerId === identity?.id);
+    pending = outbox.filter((m) => m.ownerId === identity?.id),
+    allPending = [...pending, ...feedbackOutbox.filter((m) => m.ownerId === identity?.id)];
   const sync = useCallback(async () => {
     if (!identity || !navigator.onLine || !configured()) return;
     setSyncing(true);
@@ -107,6 +114,7 @@ function Application() {
       await synchronized(db(), identity.id, sendMutation);
       const remote = await fetchSessions();
       await mergeRemote(db(), identity.id, remote, true);
+      await syncFeedback(db(), identity.id);
       setSyncError('');
     } catch (e) {
       reportError('sync', e);
@@ -120,11 +128,19 @@ function Application() {
   useEffect(() => {
     const media = matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
-      if ((localStorage.getItem('prgrs-theme') || 'system') === 'system')
-        document.documentElement.setAttribute('data-theme', media.matches ? 'dark' : 'light');
+      const theme = localStorage.getItem('prgrs-theme');
+      document.documentElement.setAttribute(
+        'data-theme',
+        theme === 'dark' || theme === 'light' ? theme : media.matches ? 'dark' : 'light',
+      );
     };
+    apply();
     media.addEventListener('change', apply);
-    return () => media.removeEventListener('change', apply);
+    window.addEventListener('storage', apply);
+    return () => {
+      media.removeEventListener('change', apply);
+      window.removeEventListener('storage', apply);
+    };
   }, []);
   useEffect(() => {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production')
@@ -159,7 +175,7 @@ function Application() {
         }
         if (!session) return;
         if (cached && cached.id !== session.user.id) {
-          if (await db().outbox.count()) {
+          if ((await db().outbox.count()) || (await db().feedbackOutbox.count())) {
             await signOutDevice();
             throw new Error(
               'Unsynced work belongs to a different account. Sign in with that account first.',
@@ -222,10 +238,10 @@ function Application() {
     };
   }, [sync]);
   useEffect(() => {
-    if (!pending.length || !online) return;
+    if (!allPending.length || !online) return;
     const timer = setTimeout(() => void sync(), 600);
     return () => clearTimeout(timer);
-  }, [pending.length, online, sync]);
+  }, [allPending.length, online, sync]);
   useEffect(() => {
     const hash = () => {
       const params = new URLSearchParams(location.hash.slice(1));
@@ -245,7 +261,7 @@ function Application() {
   const open = (id: string) => navigate('workouts', id);
   async function logout() {
     try {
-      if (await db().outbox.count()) {
+      if ((await db().outbox.count()) || (await db().feedbackOutbox.count())) {
         setError(
           'Sync or export and explicitly discard pending edits in Profile before signing out.',
         );
@@ -367,7 +383,7 @@ function Application() {
           </span>
           <div className="row">
             <span
-              className={`sync-indicator ${!online ? 'offline' : syncError || pending.some((m) => m.error) ? 'error' : pending.length || syncing ? 'pending' : 'saved'}`}
+              className={`sync-indicator ${!online ? 'offline' : syncError || allPending.some((m) => m.error) ? 'error' : allPending.length || syncing ? 'pending' : 'saved'}`}
               role="status"
             >
               {!online ? (
@@ -379,10 +395,10 @@ function Application() {
               )}
               {!online
                 ? 'Offline · saved on device'
-                : syncError || pending.some((m) => m.error)
+                : syncError || allPending.some((m) => m.error)
                   ? 'Sync needs attention'
-                  : pending.length
-                    ? `${pending.length} pending`
+                  : allPending.length
+                    ? `${allPending.length} pending`
                     : syncing
                       ? 'Synchronizing'
                       : 'All changes saved'}
@@ -440,7 +456,13 @@ function Application() {
           ) : tab === 'workouts' ? (
             <Calendar sessions={own} today={today} onOpen={open} />
           ) : tab === 'history' ? (
-            <HistoryView sessions={own} today={today} onOpen={open} />
+            <HistoryView
+              sessions={own}
+              ownerId={identity.id}
+              today={today}
+              onOpen={open}
+              onError={setError}
+            />
           ) : tab === 'coach' ? (
             identity.roles.includes('coach') ? (
               <Coach identity={identity} sessions={sessions} today={today} onRefresh={sync} />
@@ -975,25 +997,84 @@ function Calendar({
     </>
   );
 }
+function SessionRow({
+  session,
+  sessions,
+  ownerId,
+  today,
+  onOpen,
+  onError,
+}: {
+  session: WorkoutSession;
+  sessions: WorkoutSession[];
+  ownerId: string;
+  today: string;
+  onOpen: (id: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const date = session.date;
+  const day = sessions.filter((s) => s.date === date && hasSessionHistory(s));
+  return (
+    <div key={session.id} className="history-row">
+      <SessionCard session={session} today={today} onOpen={onOpen} />
+      <button
+        className="text-button history-delete"
+        aria-label="Delete day history"
+        title="Delete all history for this day"
+        disabled={deleting}
+        onClick={async () => {
+          if (
+            !window.confirm(
+              `Delete all training history for ${formatDate(date, { month: 'long', day: 'numeric', year: 'numeric' })}? This permanently removes all ${day.length} recorded workouts that day from History, Calendar and statistics, including any hidden by search. Unstarted scheduled workouts, exercise library and reusable program templates are kept.`,
+            )
+          )
+            return;
+          setDeleting(true);
+          try {
+            await deleteDayHistory(
+              db(),
+              ownerId,
+              date,
+              day.map((s) => ({ id: s.id, version: s.version })),
+            );
+          } catch (error) {
+            onError(error instanceof Error ? error.message : 'Unable to delete day history');
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      >
+        Delete day
+      </button>
+    </div>
+  );
+}
 function HistoryView({
   sessions,
+  ownerId,
+  onError,
   today,
   onOpen,
 }: {
   sessions: WorkoutSession[];
+  ownerId: string;
+  onError: (message: string) => void;
   today: string;
   onOpen: (id: string) => void;
 }) {
   const [search, setSearch] = useState('');
   const history = sessions
-    .filter(
-      (s) =>
-        (s.date < today || s.status !== 'scheduled') &&
-        s.title.toLowerCase().includes(search.toLowerCase()),
-    )
+    .filter((s) => hasSessionHistory(s) && s.title.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => b.date.localeCompare(a.date));
-  const c = completion(history),
-    a = adherence(history, today);
+  // Deleted occurrences are absent from the shared session list and all metric scopes.
+  const metricSessions = sessions.filter(
+    (s) =>
+      (s.date <= today || hasSessionHistory(s)) &&
+      s.title.toLowerCase().includes(search.toLowerCase()),
+  );
+  const c = completion(metricSessions),
+    a = adherence(metricSessions, today);
   return (
     <>
       <div className="page-heading">
@@ -1032,7 +1113,17 @@ function HistoryView({
           />
         </label>
         {history.length ? (
-          history.map((s) => <SessionCard key={s.id} session={s} today={today} onOpen={onOpen} />)
+          history.map((session) => (
+            <SessionRow
+              key={session.id}
+              session={session}
+              sessions={sessions}
+              ownerId={ownerId}
+              today={today}
+              onOpen={onOpen}
+              onError={onError}
+            />
+          ))
         ) : (
           <Empty title="No sessions yet">
             Your training history appears as you put in the work.
@@ -1059,6 +1150,11 @@ function Profile({
   onError: (s: string) => void;
   onReauth: () => void;
 }) {
+  const feedbackPending = useLiveQuery(
+    () => db().feedbackOutbox.where('ownerId').equals(identity.id).toArray(),
+    [identity.id],
+    [],
+  );
   const [theme, setTheme] = useState('system'),
     [saved, setSaved] = useState(''),
     [conflict, setConflict] = useState<{ remote: WorkoutSession; local: WorkoutSession } | null>(
@@ -1112,7 +1208,12 @@ function Profile({
     const blob = new Blob(
       [
         JSON.stringify(
-          { identityId: identity.id, exportedAt: new Date().toISOString(), mutations: pending },
+          {
+            identityId: identity.id,
+            exportedAt: new Date().toISOString(),
+            mutations: pending,
+            feedbackMutations: feedbackPending,
+          },
           null,
           2,
         ),
@@ -1207,15 +1308,15 @@ function Profile({
               <CloudOff size={22} />
             </div>
             <p className="muted">
-              {pending.length
-                ? `${pending.length} changes waiting to sync. They stay on this device until acknowledged.`
+              {pending.length + feedbackPending.length
+                ? `${pending.length + feedbackPending.length} changes waiting to sync. They stay on this device until acknowledged.`
                 : 'All your local changes have been synchronized.'}
             </p>
             <button className="button secondary" onClick={() => void onSync()}>
               <RefreshCw size={18} />
               Sync now
             </button>
-            {pending.length > 0 && (
+            {(pending.length > 0 || feedbackPending.length > 0) && (
               <>
                 {Array.from(new Set(pending.map((m) => m.error).filter(Boolean))).map((message) => (
                   <Notice error key={message}>
@@ -1240,14 +1341,14 @@ function Profile({
                     onClick={async () => {
                       if (
                         window.confirm(
-                          'Permanently discard unsynced workout edits and sign out on this device?',
+                          'Permanently discard unsynced workout and feedback edits and sign out on this device?',
                         )
                       ) {
                         try {
                           await discardAccount(
                             db(),
                             identity.id,
-                            pending.map((m) => m.id),
+                            [...pending, ...feedbackPending].map((m) => m.id),
                           );
                           queryClient.clear();
                           if (configured()) {
@@ -1272,6 +1373,7 @@ function Profile({
               connection. Cached training stays on this device until you sign out.
             </p>
           </section>
+          <FeedbackSection ownerId={identity.id} onError={onError} />
           <section className="panel stack">
             <h2>Coaching connections</h2>
             {invitations.length ? (
@@ -1358,7 +1460,7 @@ function Profile({
             ].map((v) => (
               <div key={v.label}>
                 <h3>
-                  {v.label} · {v.data.status}
+                  {v.label} · {v.data.deleted ? 'Deleted workout' : v.data.status}
                 </h3>
                 <p>
                   {completion([v.data]).completed}/{completion([v.data]).total} completed
@@ -1380,6 +1482,7 @@ function Profile({
           <div className="stack">
             <button
               className="button primary"
+              disabled={!!conflict.remote.deleted}
               onClick={async () => {
                 try {
                   await resolveConflict(
@@ -1397,7 +1500,9 @@ function Profile({
                 }
               }}
             >
-              Keep this device’s edits and sync
+              {conflict.remote.deleted
+                ? 'Deleted on server — export edits before accepting'
+                : 'Keep this device’s edits and sync'}
             </button>
             <button
               className="button secondary"
